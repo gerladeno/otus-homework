@@ -36,7 +36,7 @@ func (p *packedString) isValid() error {
 	return nil
 }
 
-func (p *packedString) unpack() error{
+func (p *packedString) unpack() error {
 	tmp := make([]byte, 0)
 	for i, v := range p.bytes {
 		switch {
@@ -50,7 +50,7 @@ func (p *packedString) unpack() error{
 			if err != nil {
 				return err
 			}
-			for j:=0; j < n; j++ {
+			for j := 0; j < n; j++ {
 				tmp = append(tmp, v)
 			}
 		}
