@@ -7,8 +7,10 @@ import (
 	"github.com/beevik/ntp"
 )
 
-const NTPServer = "ntp3.stratum2.ru"
-const timeFmt = "2006-01-02 03:04:05 -0700 MST"
+const (
+	NTPServer = "ntp3.stratum2.ru"
+	timeFmt   = "2006-01-02 03:04:05 -0700 MST"
+)
 
 func main() {
 	currentTime := time.Now().UTC()

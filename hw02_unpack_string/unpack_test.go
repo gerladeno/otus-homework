@@ -13,42 +13,25 @@ type test struct {
 }
 
 func TestUnpack(t *testing.T) {
-	for _, tst := range [...]test{
-		{
-			input:    "a4bc2d5e",
-			expected: "aaaabccddddde",
-		},
-		{
-			input:    "abccd",
-			expected: "abccd",
-		},
-		{
-			input:    "3abc",
-			expected: "",
-			err:      ErrInvalidString,
-		},
-		{
-			input:    "45",
-			expected: "",
-			err:      ErrInvalidString,
-		},
-		{
-			input:    "aaa10b",
-			expected: "",
-			err:      ErrInvalidString,
-		},
-		{
-			input:    "",
-			expected: "",
-		},
-		{
-			input:    "aaa0b",
-			expected: "aab",
-		},
-	} {
-		result, err := Unpack(tst.input)
-		require.Equal(t, tst.err, err)
-		require.Equal(t, tst.expected, result)
+	tests := []struct {
+		input    string
+		expected string
+		err      error
+	}{
+		{input: "a4bc2d5e", expected: "aaaabccddddde"},
+		{input: "abccd", expected: "abccd"},
+		{input: "3abc", expected: "", err: ErrInvalidString},
+		{input: "45", expected: "", err: ErrInvalidString},
+		{input: "aaa10b", expected: "", err: ErrInvalidString},
+		{input: "", expected: ""},
+		{input: "aaa0b", expected: "aab"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.input, func(t *testing.T) {
+			result, err := Unpack(tc.input)
+			require.Equal(t, tc.err, err)
+			require.Equal(t, tc.expected, result)
+		})
 	}
 }
 
