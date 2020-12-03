@@ -1,4 +1,4 @@
-module github.com/gerladeno/otus-homworks/hw02_unpack_string
+module github.com/gerladeno/otus-homeworks/hw02_unpack_string
 
 go 1.15
 
