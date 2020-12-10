@@ -22,7 +22,8 @@ func TestUnpack(t *testing.T) {
 		{input: "abccd", expected: "abccd"},
 		{input: "3abc", expected: "", err: ErrInvalidString},
 		{input: "45", expected: "", err: ErrInvalidString},
-		{input: "aaa10b", expected: "", err: ErrInvalidString},
+		{input: "a1bb3", expected: "abbbb"},
+		{input: "a1b3", expected: "abbb"},
 		{input: "aaa10b", expected: "", err: ErrInvalidString},
 		{input: "8", expected: "", err: ErrInvalidString},
 		{input: "", expected: ""},
@@ -32,6 +33,7 @@ func TestUnpack(t *testing.T) {
 		{input: "d\n4", expected: "d\n\n\n\n"},
 	}
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.input, func(t *testing.T) {
 			result, err := Unpack(tc.input)
 			require.Equal(t, tc.err, err)
@@ -54,6 +56,7 @@ func TestUnpackWithEscape(t *testing.T) {
 		{input: `qwe\\\3`, expected: `qwe\3`},
 	}
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.input, func(t *testing.T) {
 			result, err := Unpack(tc.input)
 			require.Equal(t, tc.err, err)

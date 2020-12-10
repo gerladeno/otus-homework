@@ -3,70 +3,60 @@ package hw02_unpack_string //nolint:golint,stylecheck
 import (
 	"errors"
 	"strconv"
+	"strings"
 	"unicode"
 )
 
 var ErrInvalidString = errors.New("invalid string")
 
-type packedString struct {
-	raw      string
-	bytes    []byte
-	unpacked string
-}
-
-func newPackedString(s string) *packedString {
-	return &packedString{
-		raw:   s,
-		bytes: []byte(s),
-	}
-}
-
-func (p *packedString) isValid() error {
-	if len(p.bytes) == 0 {
-		return nil
-	}
-	if unicode.IsDigit(rune(p.bytes[0])) {
-		return ErrInvalidString
-	}
-	for i := 1; i <= len(p.bytes)-1; i++ {
-		if unicode.IsDigit(rune(p.bytes[i-1])) && unicode.IsDigit(rune(p.bytes[i])) {
-			return ErrInvalidString
+func processTwoRunes(first, second *rune, builder *strings.Builder) (bool, error) {
+	switch *first {
+	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		return false, ErrInvalidString
+	case '\\':
+		if second == nil {
+			return false, ErrInvalidString
 		}
-	}
-	return nil
-}
-
-func (p *packedString) unpack() error {
-	tmp := make([]byte, 0)
-	for i, v := range p.bytes {
-		switch {
-		case unicode.IsDigit(rune(v)):
-		case i == len(p.bytes)-1:
-			tmp = append(tmp, v)
-		case !unicode.IsDigit(rune(v)) && !unicode.IsDigit(rune(p.bytes[i+1])):
-			tmp = append(tmp, v)
-		case !unicode.IsDigit(rune(v)) && unicode.IsDigit(rune(p.bytes[i+1])):
-			n, err := strconv.Atoi(string(p.bytes[i+1]))
-			if err != nil {
-				return err
-			}
-			for j := 0; j < n; j++ {
-				tmp = append(tmp, v)
-			}
+		if *second == '\\' || unicode.IsDigit(*second) {
+			builder.WriteRune(*second)
+			return false, nil
 		}
+		return false, ErrInvalidString
+	default:
+		if second == nil {
+			builder.WriteRune(*first)
+			return false, nil
+		}
+		if unicode.IsDigit(*second) {
+			i, _ := strconv.Atoi(string(*second))
+			builder.WriteString(strings.Repeat(string(*first), i))
+			return true, nil
+		}
+
+		builder.WriteRune(*first)
+		return false, nil
 	}
-	p.unpacked = string(tmp)
-	return nil
 }
 
 func Unpack(s string) (string, error) {
-	str := newPackedString(s)
-	if err := str.isValid(); err != nil {
-		return str.unpacked, err
+	result := new(strings.Builder)
+	runes := []rune(s)
+	for i := 0; i <= len(runes)-1; i++ {
+		var next *rune
+		switch i {
+		case len(runes) - 1:
+		case len(runes):
+			break
+		default:
+			next = &runes[i+1]
+		}
+		skipSecond, err := processTwoRunes(&runes[i], next, result)
+		if err != nil {
+			return "", err
+		}
+		if skipSecond {
+			i++
+		}
 	}
-	err := str.unpack()
-	if err != nil {
-		return str.unpacked, err
-	}
-	return str.unpacked, nil
+	return result.String(), nil
 }
