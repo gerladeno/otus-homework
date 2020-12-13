@@ -37,12 +37,12 @@ func processRune(r rune, h *holder, result *strings.Builder) error {
 		h.r = r
 		h.s = symbol
 	case h.s == escaped:
-		if unicode.IsDigit(r) || r == ESCAPE {
-			h.r = r
-			h.s = symbol
-			return nil
+		if !unicode.IsDigit(r) && r != ESCAPE {
+			return ErrInvalidString
 		}
-		return ErrInvalidString
+		h.r = r
+		h.s = symbol
+		return nil
 	case h.s == symbol:
 		if unicode.IsDigit(r) {
 			result.WriteString(strings.Repeat(string(h.r), int(r-'0')))
