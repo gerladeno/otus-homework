@@ -28,6 +28,7 @@ func TestUnpack(t *testing.T) {
 		{input: "8", expected: "", err: ErrInvalidString},
 		{input: "", expected: ""},
 		{input: "aaa0b", expected: "aab"},
+		{input: "ку3ка1ъ0", expected: "кууука"},
 		{input: " 6", expected: "      "},
 		{input: "a+3", expected: "a+++"},
 		{input: "d\n4", expected: "d\n\n\n\n"},
@@ -43,17 +44,19 @@ func TestUnpack(t *testing.T) {
 }
 
 func TestUnpackWithEscape(t *testing.T) {
-	t.Skip() // NeedRemove if task with asterisk completed
 
 	tests := []struct {
 		input    string
 		expected string
 		err      error
 	}{
+		{input: `e\4\5`, expected: `e45`},
 		{input: `qwe\4\5`, expected: `qwe45`},
 		{input: `qwe\45`, expected: `qwe44444`},
 		{input: `qwe\\5`, expected: `qwe\\\\\`},
 		{input: `qwe\\\3`, expected: `qwe\3`},
+		{input: `qwe\\`, expected: `qwe\`},
+		{input: `qwe\`, expected: ``, err: ErrInvalidString},
 	}
 	for _, tc := range tests {
 		tc := tc

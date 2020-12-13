@@ -2,61 +2,78 @@ package hw02_unpack_string //nolint:golint,stylecheck
 
 import (
 	"errors"
-	"strconv"
+	"fmt"
 	"strings"
 	"unicode"
 )
 
 var ErrInvalidString = errors.New("invalid string")
 
-func processTwoRunes(first, second *rune, builder *strings.Builder) (bool, error) {
-	switch *first {
-	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-		return false, ErrInvalidString
-	case '\\':
-		if second == nil {
-			return false, ErrInvalidString
-		}
-		if *second == '\\' || unicode.IsDigit(*second) {
-			builder.WriteRune(*second)
-			return false, nil
-		}
-		return false, ErrInvalidString
-	default:
-		if second == nil {
-			builder.WriteRune(*first)
-			return false, nil
-		}
-		if unicode.IsDigit(*second) {
-			i, _ := strconv.Atoi(string(*second))
-			builder.WriteString(strings.Repeat(string(*first), i))
-			return true, nil
-		}
+const ESCAPE = '\\'
 
-		builder.WriteRune(*first)
-		return false, nil
+type state int
+
+const (
+	unaffected state = iota
+	escaped
+	symbol
+)
+
+type holder struct {
+	r rune
+	s state
+}
+
+func processRune(r rune, h *holder, result *strings.Builder) error {
+	switch {
+	case h.s == unaffected:
+		if unicode.IsDigit(r) {
+			return ErrInvalidString
+		}
+		if r == ESCAPE {
+			h.s = escaped
+			return nil
+		}
+		h.r = r
+		h.s = symbol
+	case h.s == escaped:
+		if unicode.IsDigit(r) || r == ESCAPE {
+			h.r = r
+			h.s = symbol
+			return nil
+		}
+		return ErrInvalidString
+	case h.s == symbol:
+		if unicode.IsDigit(r) {
+			result.WriteString(strings.Repeat(string(h.r), int(r-'0')))
+			h.s = unaffected
+			return nil
+		}
+		if r == ESCAPE {
+			result.WriteRune(h.r)
+			h.r = ESCAPE
+			h.s = escaped
+			return nil
+		}
+		result.WriteRune(h.r)
+		h.r = r
+		h.s = symbol
+	default:
+		return fmt.Errorf("wtf error")
 	}
+	return nil
 }
 
 func Unpack(s string) (string, error) {
-	result := new(strings.Builder)
-	runes := []rune(s)
-	for i := 0; i <= len(runes)-1; i++ {
-		var next *rune
-		switch i {
-		case len(runes) - 1:
-		case len(runes):
-			break
-		default:
-			next = &runes[i+1]
-		}
-		skipSecond, err := processTwoRunes(&runes[i], next, result)
-		if err != nil {
+	result := &strings.Builder{}
+	h := holder{}
+	for _, symbol := range s {
+		if err := processRune(symbol, &h, result); err != nil {
 			return "", err
 		}
-		if skipSecond {
-			i++
-		}
+	}
+	if err := processRune('a', &h, result); err != nil {
+		return "", err
 	}
 	return result.String(), nil
 }
