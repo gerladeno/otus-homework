@@ -7,7 +7,8 @@ import (
 
 func Top10(input string) []string {
 	lowerCleaned := strings.ReplaceAll(strings.ReplaceAll(strings.ToLower(input), "\n", " "), "\t", " ")
-	re := regexp.MustCompile(`(\s-\s)|[,. !?;:—'"()@+<>\[\]{}\\|/*&#$^%~_=]+`)
+	reStr := `(([^A-Za-zА-Яа-я0-9]-[^A-Za-zА-Яа-я0-9])|[,. !?;:—'"()@+<>\[\]{}\\|/*&#$^%~_=])+`
+	re := regexp.MustCompile(reStr)
 
 	words := re.Split(lowerCleaned, -1)
 

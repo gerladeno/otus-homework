@@ -50,8 +50,8 @@ func TestTop10(t *testing.T) {
 		{"no words in empty string", "", nil},
 		{"no words in string of spaces", "         ", nil},
 		{"less words than 10", "one three two three two three", []string{"one", "two", "three"}},
-		{"rubbish", "!@#$%^&*()_+=", nil},
-		{"numbers", "23423 4 283 239 4238 4 4 5 2 234 234 234 22322 1 1 1 2 2 3 6 3 6 7 7,5=8*8/9/9", []string{"1", "4", "2", "234", "5", "6", "7", "8", "9", "3"}},
+		{"rubbish", "!@#$%^&*()-_+=", nil},
+		{"numbers", "23423 4 4 283 239 4238 4-4 5 2 234 234 234 22322 1 1 1 2 2 3 6 3 6 7 7,5=8*8/9/9", []string{"1", "4", "2", "234", "5", "6", "7", "8", "9", "3"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			require.ElementsMatch(t, Top10(test.input), test.expected)
