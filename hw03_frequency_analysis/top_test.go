@@ -6,9 +6,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Change to true if needed
-var taskWithAsteriskIsCompleted = false
-
 var text = `Как видите, он  спускается  по  лестнице  вслед  за  своим
 	другом   Кристофером   Робином,   головой   вниз,  пересчитывая
 	ступеньки собственным затылком:  бум-бум-бум.  Другого  способа
@@ -42,19 +39,26 @@ var text = `Как видите, он  спускается  по  лестни�
 	иногда,  особенно  когда  папа  дома,  он больше любит тихонько
 	посидеть у огня и послушать какую-нибудь интересную сказку.
 		В этот вечер...`
+var expected = []string{"он", "а", "и", "что", "ты", "не", "если", "то", "его", "кристофер", "робин", "в"}
 
 func TestTop10(t *testing.T) {
-	t.Run("no words in empty string", func(t *testing.T) {
-		require.Len(t, Top10(""), 0)
-	})
+	for _, test := range [...]struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{"no words in empty string", "", nil},
+		{"no words in string of spaces", "         ", nil},
+		{"less words than 10", "one three two three two three", []string{"one", "two", "three"}},
+		{"rubbish", "!@#$%^&*()-_+=", nil},
+		{"numbers", "23423 4 4 283 239 4238 4-4 5 2 234 234 234 22322 1 1 1 2 2 3 6 3 6 7 7,5=8*8/9/9", []string{"1", "4", "2", "234", "5", "6", "7", "8", "9", "3"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			require.ElementsMatch(t, Top10(test.input), test.expected)
+		})
+	}
 
-	t.Run("positive test", func(t *testing.T) {
-		if taskWithAsteriskIsCompleted {
-			expected := []string{"он", "а", "и", "что", "ты", "не", "если", "то", "его", "кристофер", "робин", "в"}
-			require.Subset(t, expected, Top10(text))
-		} else {
-			expected := []string{"он", "и", "а", "что", "ты", "не", "если", "-", "то", "Кристофер"}
-			require.ElementsMatch(t, expected, Top10(text))
-		}
+	t.Run("big positive test", func(t *testing.T) {
+		require.Subset(t, expected, Top10(text))
 	})
 }
