@@ -5,7 +5,7 @@ import (
 
 type Key string
 
-var mx sync.RWMutex
+var mx sync.Mutex
 
 type Cache interface {
 	Get(Key) (interface{}, bool)
@@ -30,9 +30,10 @@ func (c *lruCache) Clear() {
 }
 
 func (c lruCache) Get(key Key) (interface{}, bool) {
-	mx.RLock()
-	defer mx.RUnlock()
+	mx.Lock()
+	defer mx.Unlock()
 	if val, ok := c.items[key]; ok {
+		c.queue.MoveToFront(val)
 		return val.Value.(cacheItem).Value, true
 	}
 	return nil, false
