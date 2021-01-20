@@ -23,13 +23,13 @@ func worker(jobs <-chan Task, errChan chan<- struct{}) {
 }
 
 // Run starts tasks in N goroutines and stops its work when receiving M errors from tasks
-func Run(tasks []Task, N int, M int) error {
+func Run(tasks []Task, n int, m int) error {
 	var mainError error
 	tasksChan := make(chan Task)
 
 	var errChanLen int
-	if M >= 0 {
-		errChanLen = M
+	if m >= 0 {
+		errChanLen = m
 	} else {
 		errChanLen = len(tasks)
 	}
@@ -40,10 +40,10 @@ func Run(tasks []Task, N int, M int) error {
 		for _, task := range tasks {
 			select {
 			case <-errChan:
-				if M >= 0 {
+				if m >= 0 {
 					errCnt.mx.Lock()
 					errCnt.val++
-					if errCnt.val >= M {
+					if errCnt.val >= m {
 						errCnt.mx.Unlock()
 						mainError = ErrErrorsLimitExceeded
 						break tasksLoop
@@ -58,7 +58,7 @@ func Run(tasks []Task, N int, M int) error {
 		close(tasksChan)
 	}()
 	wg := sync.WaitGroup{}
-	for i := 0; i < N; i++ {
+	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
