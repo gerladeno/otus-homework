@@ -26,21 +26,30 @@ func worker(jobs <-chan Task, errChan chan<- struct{}) {
 func Run(tasks []Task, N int, M int) error {
 	var mainError error
 	tasksChan := make(chan Task)
-	errChan := make(chan struct{}, M)
+
+	var errChanLen int
+	if M >= 0 {
+		errChanLen = M
+	} else {
+		errChanLen = len(tasks)
+	}
+	errChan := make(chan struct{}, errChanLen)
 	errCnt := safeInt{}
 	go func() {
 	tasksLoop:
 		for _, task := range tasks {
 			select {
 			case <-errChan:
-				errCnt.mx.Lock()
-				errCnt.val++
-				if errCnt.val >= M {
+				if M >= 0 {
+					errCnt.mx.Lock()
+					errCnt.val++
+					if errCnt.val >= M {
+						errCnt.mx.Unlock()
+						mainError = ErrErrorsLimitExceeded
+						break tasksLoop
+					}
 					errCnt.mx.Unlock()
-					mainError = ErrErrorsLimitExceeded
-					break tasksLoop
 				}
-				errCnt.mx.Unlock()
 				tasksChan <- task
 			default:
 				tasksChan <- task
