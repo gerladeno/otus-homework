@@ -22,7 +22,7 @@ func worker(jobs <-chan Task, errChan chan<- struct{}) {
 	}
 }
 
-// Run starts tasks in N goroutines and stops its work when receiving M errors from tasks
+// Run starts tasks in N goroutines and stops its work when receiving M errors from tasks.
 func Run(tasks []Task, n int, m int) error {
 	var mainError error
 	tasksChan := make(chan Task)
