@@ -36,7 +36,7 @@ func Run(tasks []Task, n int, m int) error {
 	errChan := make(chan struct{}, errChanLen)
 	errCnt := safeInt{}
 	go func() {
-	tasksLoop:
+		defer close(tasksChan)
 		for _, task := range tasks {
 			select {
 			case <-errChan:
@@ -46,7 +46,7 @@ func Run(tasks []Task, n int, m int) error {
 					if errCnt.val >= m {
 						errCnt.mx.Unlock()
 						mainError = ErrErrorsLimitExceeded
-						break tasksLoop
+						return
 					}
 					errCnt.mx.Unlock()
 				}
@@ -55,7 +55,6 @@ func Run(tasks []Task, n int, m int) error {
 				tasksChan <- task
 			}
 		}
-		close(tasksChan)
 	}()
 	wg := sync.WaitGroup{}
 	for i := 0; i < n; i++ {
