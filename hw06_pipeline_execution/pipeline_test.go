@@ -116,7 +116,7 @@ func TestPipeline(t *testing.T) {
 		elapsed := time.Since(start)
 		require.Len(t, result, 5)
 		require.Less(t, int64(abortDur), int64(elapsed))
-		require.Less(t, int64(elapsed), int64(abortDur)+300000)
+		require.Less(t, int64(elapsed), int64(abortDur)+1000000)
 	})
 
 	t.Run("empty slice of workers", func(t *testing.T) {
