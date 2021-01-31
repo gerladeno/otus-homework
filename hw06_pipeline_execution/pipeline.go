@@ -1,8 +1,4 @@
 package hw06_pipeline_execution //nolint:golint,stylecheck
-import (
-	"log"
-	"sync"
-)
 
 type (
 	In  = <-chan interface{}
@@ -35,28 +31,24 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 			}
 		}
 	}
-	var wg = sync.WaitGroup{}
+	//var wg = sync.WaitGroup{}
 	for _, stage := range stages {
-		wg.Add(1)
-		log.Print("main +1")
-		stage := stage
-		go func() {
-			defer wg.Done()
-			defer log.Printf("main -1")
-			input := make(Bi)
-			wg.Add(1)
-			log.Printf("inner +1")
-			go func() {
-				defer wg.Done()
-				defer log.Printf("inner -1")
-				transmitter(input, done, in)
-			}()
-			in = stage(input)
-		}()
-		//input := make(Bi)
-		//go transmitter(input, done, in)
-		//in = stage(input)
+		//wg.Add(1)
+		//stage := stage
+		//go func() {
+		//	defer wg.Done()
+		//	input := make(Bi)
+		//	wg.Add(1)
+		//	go func() {
+		//		defer wg.Done()
+		//		transmitter(input, done, in)
+		//	}()
+		//	in = stage(input)
+		//}()
+		input := make(Bi)
+		go transmitter(input, done, in)
+		in = stage(input)
 	}
-	wg.Wait()
+	//wg.Wait()
 	return in
 }
