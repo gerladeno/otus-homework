@@ -161,27 +161,4 @@ func TestPipeline(t *testing.T) {
 		require.Less(t, int64(elapsed), int64(fault))
 	})
 
-	t.Run("long input", func(t *testing.T) {
-		in := make(Bi)
-
-		n := 100
-		go func() {
-			for i := 0; i < n; i++ {
-				in <- i
-			}
-			close(in)
-		}()
-
-		result := make([]string, 0, 10)
-		start := time.Now()
-		for s := range ExecutePipeline(in, nil, stages...) {
-			result = append(result, s.(string))
-		}
-		elapsed := time.Since(start)
-
-		require.Len(t, result, n)
-		require.Less(t,
-			int64(elapsed),
-			int64(sleepPerStage)*int64(len(stages)+n-1)+int64(fault))
-	})
 }
