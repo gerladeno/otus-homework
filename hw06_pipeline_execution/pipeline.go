@@ -9,26 +9,46 @@ type (
 type Stage func(in In) (out Out)
 
 func ExecutePipeline(in In, done In, stages ...Stage) Out {
-	//var input Bi
-	input := make(Bi)
-	go func() {
-		//input = make(Bi)
-		defer close(input)
-		for item := range in{
+	transmitter := func(in Bi, done In, out Out) {
+		for {
 			select {
 			case <-done:
+				close(in)
 				return
-			case input <- item:
+			default:
+				select {
+				case <-done:
+					close(in)
+					return
+				case tmp, ok := <-out:
+					if ok {
+						in <- tmp
+					} else {
+						close(in)
+						return
+					}
+				}
 			}
 		}
-	}()
-	var out Out
-	for _, stage := range stages {
-		if out == nil {
-			out = stage(input)
-		} else {
-			out = stage(out)
-		}
 	}
-	return out
+	// var wg = sync.WaitGroup{}
+	for _, stage := range stages {
+		// wg.Add(1)
+		// stage := stage
+		// go func() {
+		//	defer wg.Done()
+		//	input := make(Bi)
+		//	wg.Add(1)
+		//	go func() {
+		//		defer wg.Done()
+		//		transmitter(input, done, in)
+		//	}()
+		//	in = stage(input)
+		// }()
+		input := make(Bi)
+		go transmitter(input, done, in)
+		in = stage(input)
+	}
+	// wg.Wait()
+	return in
 }
