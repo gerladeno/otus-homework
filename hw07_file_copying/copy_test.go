@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/stretchr/testify/require"
 	"io/ioutil"
+	"log"
 	"os"
 	"testing"
 )
@@ -19,7 +20,7 @@ func TestCopyErr(t *testing.T) {
 		{"offset too big", "test.sh", "", 800, 0, ErrOffsetExceedsFileSize},
 		{"file no length", "/dev/urandom", "", 0, 0, ErrUnsupportedFile},
 		{"ok", "test.sh", "/tmp/out", 0, 0, nil},
-		{"max offset", "test.sh", "/tmp/out", 0, 0, nil},
+		{"max offset", "test.sh", "/tmp/out", 734, 0, nil},
 		{"limit exceeds size", "testdata/out_offset0_limit10000.txt", "/dev/null", 0, 0, nil},
 	}
 	for _, test := range tests {
@@ -54,24 +55,48 @@ func TestCopy(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			from, _ := os.Create(fileIn)
+			from, err := os.Create(fileIn)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer os.Remove(fileIn)
+			_, err = from.WriteString(test.input)
+			if err != nil {
+				log.Fatal(err)
+			}
 			defer from.Close()
-			_, _ = from.WriteString(test.input)
-			_ = Copy(fileIn, fileOut, test.offset, test.limit)
-			result, _ := ioutil.ReadFile(fileOut)
+			err = Copy(fileIn, fileOut, test.offset, test.limit)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer os.Remove(fileOut)
+			result, err := ioutil.ReadFile(fileOut)
+			if err != nil {
+				log.Fatal(err)
+			}
 			require.Equal(t, string(result), test.result)
-			_ = os.Remove(fileIn)
-			_ = os.Remove(fileOut)
 		})
 	}
 	t.Run("binary", func(t *testing.T) {
-		from, _ := os.Create(fileIn)
+		from, err := os.Create(fileIn)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer os.Remove(fileIn)
+		_, err = from.Write(binaryData)
+		if err != nil {
+			log.Fatal(err)
+		}
 		defer from.Close()
-		_, _ = from.Write(binaryData)
-		_ = Copy(fileIn, fileOut, 0, 0)
-		result, _ := ioutil.ReadFile(fileOut)
+		err = Copy(fileIn, fileOut, 0, 0)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer os.Remove(fileOut)
+		result, err := ioutil.ReadFile(fileOut)
+		if err != nil {
+			log.Fatal(err)
+		}
 		require.Equal(t, result, binaryData)
-		_ = os.Remove(fileIn)
-		_ = os.Remove(fileOut)
 	})
 }
