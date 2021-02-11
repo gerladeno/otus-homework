@@ -2,6 +2,7 @@ package hw06_pipeline_execution //nolint:golint,stylecheck
 
 import (
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -18,11 +19,18 @@ func TestPipeline(t *testing.T) {
 	g := func(name string, f func(v interface{}) interface{}) Stage {
 		return func(in In) Out {
 			out := make(Bi)
+			var wg = sync.WaitGroup{}
 			go func() {
 				defer close(out)
+				defer wg.Wait()
 				for v := range in {
-					time.Sleep(sleepPerStage)
-					out <- f(v)
+					wg.Add(1)
+					v := v
+					go func() {
+						defer wg.Done()
+						time.Sleep(sleepPerStage)
+						out <- f(v)
+					}()
 				}
 			}()
 			return out
@@ -54,11 +62,10 @@ func TestPipeline(t *testing.T) {
 		}
 		elapsed := time.Since(start)
 
-		require.Equal(t, []string{"102", "104", "106", "108", "110"}, result)
+		require.ElementsMatch(t, []string{"102", "104", "106", "108", "110"}, result)
 		require.Less(t,
 			int64(elapsed),
-			// ~0.8s for processing 5 values in 4 stages (100ms every) concurrently
-			int64(sleepPerStage)*int64(len(stages)+len(data)-1)+int64(fault))
+			int64(sleepPerStage)*int64(len(stages))+int64(fault))
 	})
 
 	t.Run("done case", func(t *testing.T) {
@@ -161,4 +168,28 @@ func TestPipeline(t *testing.T) {
 		require.Less(t, int64(elapsed), int64(fault))
 	})
 
+	t.Run("many input values case", func(t *testing.T) {
+		in := make(Bi)
+		n := 10000
+		data := make([]int, n)
+
+		go func() {
+			for i, _ := range data {
+				in <- i
+			}
+			close(in)
+		}()
+
+		result := make([]string, 0, n)
+		start := time.Now()
+		for s := range ExecutePipeline(in, nil, stages...) {
+			result = append(result, s.(string))
+		}
+		elapsed := time.Since(start)
+
+		require.Len(t, result, n)
+		require.Less(t,
+			int64(elapsed),
+			int64(sleepPerStage)*int64(len(stages))+int64(fault))
+	})
 }
