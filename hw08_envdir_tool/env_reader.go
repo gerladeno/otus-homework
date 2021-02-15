@@ -24,18 +24,20 @@ func ReadDir(dir string) (Environment, error) {
 	}
 	envs := make(Environment)
 	for _, file := range contents {
-		if file.Mode().IsRegular() {
-			name := file.Name()
-			if strings.Contains(name, "=") {
-				log.Printf("filename \"%s\" contains \"=\", skipped...", name)
-			}
-			value, err := readEnv(filepath.Join(dir, name))
-			if err != nil {
-				log.Printf("can't read file \"%s\", %s, skipped...", name, err.Error())
-				continue
-			}
-			envs[name] = *value
+		if !file.Mode().IsRegular() {
+			continue
 		}
+		name := file.Name()
+		if strings.Contains(name, "=") {
+			log.Printf("filename \"%s\" contains \"=\", skipped...", name)
+			continue
+		}
+		value, err := readEnv(filepath.Join(dir, name))
+		if err != nil {
+			log.Printf("can't read file \"%s\", %s, skipped...", name, err.Error())
+			continue
+		}
+		envs[name] = *value
 	}
 	return envs, nil
 }
