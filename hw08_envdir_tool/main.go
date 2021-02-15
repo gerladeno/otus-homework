@@ -13,7 +13,7 @@ func main() {
 	}
 	envs, err := ReadDir(args[1])
 	if err != nil {
-		log.Printf("error readeng envs %s", err.Error())
+		log.Printf("error reading envs %s", err.Error())
 	}
 	result := RunCmd(args[2:], envs)
 	os.Exit(result)
