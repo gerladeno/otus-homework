@@ -1,4 +1,4 @@
-module otus-homeworks/hw09_struct_validator
+module github.com/gerladeno/otus-homeworks/hw09_struct_validator
 
 go 1.15
 
