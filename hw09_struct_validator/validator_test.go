@@ -30,7 +30,11 @@ type (
 	}
 
 	Invalid struct {
-
+		Value1 int     `validate:"mix:8"`
+		Value2 int     `validate:"max:a"`
+		Value3 string  `validate:"int:one,two"`
+		Value4 float64 `validate:"max:10"`
+		Value5 float64
 	}
 
 	App struct {
@@ -96,6 +100,12 @@ func TestValidate(t *testing.T) {
 			ValidationError{"Value2", ErrInvalidInt},
 			ValidationError{"Value4", ErrInvalidInt},
 			ValidationError{"Structure.Version", ErrInvalidString},
+		}},
+		{Invalid{}, ValidationErrors{
+			ValidationError{"Value1", ErrUnknownIntValidator},
+			ValidationError{"Value2", ErrUnknownIntValidator},
+			ValidationError{"Value3", ErrUnknownStringValidator},
+			ValidationError{"Value4", ErrUnsupportedType},
 		}},
 	}
 
