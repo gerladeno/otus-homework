@@ -1,4 +1,4 @@
-module github.com/gerladeno/otus-homeworks/hw09_struct_validator
+module github.com/gerladeno/otus-homeworks/hw09_struct_validator //nolint:golint,stylecheck
 
 go 1.15
 
