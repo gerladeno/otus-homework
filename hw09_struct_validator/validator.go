@@ -54,8 +54,8 @@ func validateFields(v interface{}, currentPath string, errs *ValidationErrors) {
 			validateFields(reflectValue.Field(i).Interface(), fieldPath, errs)
 			continue
 		}
-		if _, ok := field.Tag.Lookup("validate"); ok {
-			err := validate(field, reflectValue.Field(i))
+		if validators, ok := field.Tag.Lookup("validate"); ok {
+			err := validate(reflectValue.Field(i), validators)
 			if err != nil {
 				errs.add(ValidationError{
 					Field: fieldPath,
@@ -66,15 +66,15 @@ func validateFields(v interface{}, currentPath string, errs *ValidationErrors) {
 	}
 }
 
-func validate(fieldT reflect.StructField, fieldV reflect.Value) error {
+func validate(field reflect.Value, validators string) error {
 	var err error
-	switch fieldT.Type.Kind() {
+	switch field.Kind() {
 	case reflect.String:
-		err = validateString(fieldT, fieldV)
+		err = validateString(field, validators)
 	case reflect.Slice:
-		err = validateSlice(fieldT, fieldV)
+		err = validateSlice(field, validators)
 	case reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		err = validateInt(fieldT, fieldV)
+		err = validateInt(field, validators)
 	default:
 		return ErrUnsupportedType
 	}

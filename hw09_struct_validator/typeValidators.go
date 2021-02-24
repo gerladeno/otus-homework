@@ -2,6 +2,7 @@ package hw09_struct_validator //nolint:golint,stylecheck
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -9,15 +10,17 @@ import (
 )
 
 var ErrUnknownIntValidator = errors.New("incorrect or unknown validator for integer types")
-var ErrInvalidInt = errors.New("invalid int value")
+var ErrInvalidIntValue = errors.New("invalid int value")
+var ErrInvalidIntMin = errors.New("int value is lesser than limit")
+var ErrInvalidIntMax = errors.New("int value exceeds limit")
 var ErrUnknownStringValidator = errors.New("incorrect or unknown validator for strings")
-var ErrInvalidString = errors.New("invalid string value")
-var ErrUnknownSliceValidator = errors.New("incorrect or unknown validator for slices")
+var ErrInvalidStringValue = errors.New("invalid string value")
+var ErrInvalidStringRegexp = errors.New("string doesn't match regexp")
+var ErrInvalidStringLength = errors.New("string length exceeds the limit")
 var ErrInvalidSlice = errors.New("invalid slice")
 
-func validateString(fieldT reflect.StructField, fieldV reflect.Value) error {
+func validateString(field reflect.Value, validators string) error {
 	var valid bool
-	validators := fieldT.Tag.Get("validate")
 	for _, validator := range strings.Split(validators, "|") {
 		switch {
 		case strings.HasPrefix(validator, "len:"):
@@ -25,24 +28,24 @@ func validateString(fieldT reflect.StructField, fieldV reflect.Value) error {
 			if err != nil {
 				return ErrUnknownStringValidator
 			}
-			if len(fieldV.String()) > l {
-				return ErrInvalidString
+			if len(field.String()) > l {
+				return ErrInvalidStringLength
 			}
 		case strings.HasPrefix(validator, "in:"):
 			for _, val := range strings.Split(validator[3:], ",") {
-				if val == fieldV.String() {
+				if val == field.String() {
 					valid = true
 					break
 				}
 			}
 			if !valid {
-				return ErrInvalidString
+				return ErrInvalidStringValue
 			}
 		case strings.HasPrefix(validator, "regexp:"):
 			re := validator[7:]
 			Re := regexp.MustCompile(re)
-			if !Re.MatchString(fieldV.String()) {
-				return ErrInvalidString
+			if !Re.MatchString(field.String()) {
+				return ErrInvalidStringRegexp
 			}
 		default:
 			return ErrUnknownStringValidator
@@ -51,28 +54,48 @@ func validateString(fieldT reflect.StructField, fieldV reflect.Value) error {
 	return nil
 }
 
-func validateSlice(fieldT reflect.StructField, fieldV reflect.Value) error {
-	validators := fieldT.Tag.Get("validate")
-	for _, validator := range strings.Split(validators, "|") {
-		switch {
-		case strings.HasPrefix(validator, "len:"):
-			l, err := strconv.Atoi(validator[4:])
+func validateSlice(field reflect.Value, validators string) error {
+	slice := field.Interface()
+	var errs []struct {
+		i int
+		e error
+	}
+	switch t := slice.(type) {
+	case []string:
+		for i, elem := range t {
+			err := validateString(reflect.ValueOf(elem), validators)
 			if err != nil {
-				return ErrUnknownSliceValidator
+				errs = append(errs, struct {
+					i int
+					e error
+				}{i: i, e: err})
 			}
-			if fieldV.Len() > l {
-				return ErrInvalidSlice
-			}
-		default:
-			return ErrUnknownSliceValidator
 		}
+	case []int:
+		for i, elem := range t {
+			err := validateInt(reflect.ValueOf(elem), validators)
+			if err != nil {
+				errs = append(errs, struct {
+					i int
+					e error
+				}{i: i, e: err})
+			}
+		}
+	default:
+		return ErrUnsupportedType
+	}
+	if errs != nil {
+		var combinedError string
+		for _, err := range errs {
+			combinedError += fmt.Sprintf("%d: %s\n", err.i, err.e.Error())
+		}
+		return fmt.Errorf("%w\n%s", ErrInvalidSlice, combinedError)
 	}
 	return nil
 }
 
-func validateInt(fieldT reflect.StructField, fieldV reflect.Value) error {
+func validateInt(field reflect.Value, validators string) error {
 	var valid bool
-	validators := fieldT.Tag.Get("validate")
 	for _, validator := range strings.Split(validators, "|") {
 		switch {
 		case strings.HasPrefix(validator, "in:"):
@@ -81,13 +104,13 @@ func validateInt(fieldT reflect.StructField, fieldV reflect.Value) error {
 				if err != nil {
 					return ErrUnknownIntValidator
 				}
-				if i == int(fieldV.Int()) {
+				if i == int(field.Int()) {
 					valid = true
 					break
 				}
 			}
 			if !valid {
-				return ErrInvalidInt
+				return ErrInvalidIntValue
 			}
 		case strings.HasPrefix(validator, "min:"):
 			var (
@@ -97,8 +120,8 @@ func validateInt(fieldT reflect.StructField, fieldV reflect.Value) error {
 			if min, err = strconv.Atoi(validator[4:]); err != nil {
 				return ErrUnknownIntValidator
 			}
-			if int(fieldV.Int()) < min {
-				return ErrInvalidInt
+			if int(field.Int()) < min {
+				return ErrInvalidIntMin
 			}
 		case strings.HasPrefix(validator, "max:"):
 			var (
@@ -108,8 +131,8 @@ func validateInt(fieldT reflect.StructField, fieldV reflect.Value) error {
 			if max, err = strconv.Atoi(validator[4:]); err != nil {
 				return ErrUnknownIntValidator
 			}
-			if int(fieldV.Int()) > max {
-				return ErrInvalidInt
+			if int(field.Int()) > max {
+				return ErrInvalidIntMax
 			}
 		default:
 			return ErrUnknownIntValidator
