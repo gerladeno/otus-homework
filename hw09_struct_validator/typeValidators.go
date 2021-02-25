@@ -1,4 +1,4 @@
-package hw09_struct_validator //nolint:golint,stylecheck
+package hw09structvalidator //nolint:golint,stylecheck
 
 import (
 	"errors"
