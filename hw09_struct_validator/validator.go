@@ -1,4 +1,5 @@
-package hw09structvalidator //nolint:golint,stylecheck
+package hw09structvalidator
+
 import (
 	"errors"
 	"fmt"

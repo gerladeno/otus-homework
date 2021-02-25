@@ -1,4 +1,4 @@
-package hw09structvalidator //nolint:golint,stylecheck
+package hw09structvalidator
 
 import (
 	"errors"
@@ -20,33 +20,14 @@ var ErrInvalidStringLength = errors.New("string length exceeds the limit")
 var ErrInvalidSlice = errors.New("invalid slice")
 
 func validateString(field reflect.Value, validators string) error {
-	var valid bool
 	for _, validator := range strings.Split(validators, "|") {
 		switch {
 		case strings.HasPrefix(validator, "len:"):
-			l, err := strconv.Atoi(validator[4:])
-			if err != nil {
-				return ErrUnknownStringValidator
-			}
-			if len(field.String()) > l {
-				return ErrInvalidStringLength
-			}
+			return validateStringLen(field.String(), validator[4:])
 		case strings.HasPrefix(validator, "in:"):
-			for _, val := range strings.Split(validator[3:], ",") {
-				if val == field.String() {
-					valid = true
-					break
-				}
-			}
-			if !valid {
-				return ErrInvalidStringValue
-			}
+			return validateStringInValues(field.String(), validator[3:])
 		case strings.HasPrefix(validator, "regexp:"):
-			re := validator[7:]
-			Re := regexp.MustCompile(re)
-			if !Re.MatchString(field.String()) {
-				return ErrInvalidStringRegexp
-			}
+			return validateStringMatchRe(field.String(), validator[7:])
 		default:
 			return ErrUnknownStringValidator
 		}
@@ -54,33 +35,35 @@ func validateString(field reflect.Value, validators string) error {
 	return nil
 }
 
+func validateInt(field reflect.Value, validators string) error {
+	for _, validator := range strings.Split(validators, "|") {
+		switch {
+		case strings.HasPrefix(validator, "in:"):
+			return validateIntIn(int(field.Int()), validator[3:])
+		case strings.HasPrefix(validator, "min:"):
+			return validateIntMin(int(field.Int()), validator[4:])
+		case strings.HasPrefix(validator, "max:"):
+			return validateIntMax(int(field.Int()), validator[4:])
+		default:
+			return ErrUnknownIntValidator
+		}
+	}
+	return nil
+}
+
+type sliceErr struct {
+	i int
+	e error
+}
+
 func validateSlice(field reflect.Value, validators string) error {
 	slice := field.Interface()
-	var errs []struct {
-		i int
-		e error
-	}
+	var errs []sliceErr
 	switch t := slice.(type) {
 	case []string:
-		for i, elem := range t {
-			err := validateString(reflect.ValueOf(elem), validators)
-			if err != nil {
-				errs = append(errs, struct {
-					i int
-					e error
-				}{i: i, e: err})
-			}
-		}
+		errs = validateSliceOfStrings(t, validators)
 	case []int:
-		for i, elem := range t {
-			err := validateInt(reflect.ValueOf(elem), validators)
-			if err != nil {
-				errs = append(errs, struct {
-					i int
-					e error
-				}{i: i, e: err})
-			}
-		}
+		errs = validateSliceOfInt(t, validators)
 	default:
 		return ErrUnsupportedType
 	}
@@ -94,49 +77,98 @@ func validateSlice(field reflect.Value, validators string) error {
 	return nil
 }
 
-func validateInt(field reflect.Value, validators string) error {
+func validateSliceOfStrings(t []string, validators string) []sliceErr {
+	var errs []sliceErr
+	for i, elem := range t {
+		err := validateString(reflect.ValueOf(elem), validators)
+		if err != nil {
+			errs = append(errs, sliceErr{i: i, e: err})
+		}
+	}
+	return errs
+}
+
+func validateSliceOfInt(t []int, validators string) []sliceErr {
+	var errs []sliceErr
+	for i, elem := range t {
+		err := validateInt(reflect.ValueOf(elem), validators)
+		if err != nil {
+			errs = append(errs, sliceErr{i: i, e: err})
+		}
+	}
+	return errs
+}
+
+func validateStringLen(s, validator string) error {
+	l, err := strconv.Atoi(validator)
+	if err != nil {
+		return ErrUnknownStringValidator
+	}
+	if len(s) > l {
+		return ErrInvalidStringLength
+	}
+	return nil
+}
+
+func validateStringInValues(s, validator string) error {
+	values := strings.Split(validator, ",")
 	var valid bool
-	for _, validator := range strings.Split(validators, "|") {
-		switch {
-		case strings.HasPrefix(validator, "in:"):
-			for _, val := range strings.Split(validator[3:], ",") {
-				i, err := strconv.Atoi(val)
-				if err != nil {
-					return ErrUnknownIntValidator
-				}
-				if i == int(field.Int()) {
-					valid = true
-					break
-				}
-			}
-			if !valid {
-				return ErrInvalidIntValue
-			}
-		case strings.HasPrefix(validator, "min:"):
-			var (
-				min int
-				err error
-			)
-			if min, err = strconv.Atoi(validator[4:]); err != nil {
-				return ErrUnknownIntValidator
-			}
-			if int(field.Int()) < min {
-				return ErrInvalidIntMin
-			}
-		case strings.HasPrefix(validator, "max:"):
-			var (
-				max int
-				err error
-			)
-			if max, err = strconv.Atoi(validator[4:]); err != nil {
-				return ErrUnknownIntValidator
-			}
-			if int(field.Int()) > max {
-				return ErrInvalidIntMax
-			}
-		default:
+	for _, val := range values {
+		if val == s {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		return ErrInvalidStringValue
+	}
+	return nil
+}
+
+func validateStringMatchRe(s, re string) error {
+	Re := regexp.MustCompile(re)
+	if !Re.MatchString(s) {
+		return ErrInvalidStringRegexp
+	}
+	return nil
+}
+
+func validateIntIn(value int, validator string) error {
+	var valid bool
+	for _, val := range strings.Split(validator, ",") {
+		i, err := strconv.Atoi(val)
+		if err != nil {
 			return ErrUnknownIntValidator
 		}
+		if i == value {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		return ErrInvalidIntValue
+	}
+	return nil
+}
+
+func validateIntMin(value int, validator string) error {
+	min, err := strconv.Atoi(validator)
+	if err != nil {
+		return ErrUnknownIntValidator
+	}
+	if value < min {
+		return ErrInvalidIntMin
+	}
+	return nil
+}
+
+func validateIntMax(value int, validator string) error {
+	max, err := strconv.Atoi(validator)
+	if err != nil {
+		return ErrUnknownIntValidator
+	}
+	if value > max {
+		return ErrInvalidIntMax
 	}
 	return nil
 }
