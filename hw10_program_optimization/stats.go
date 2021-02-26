@@ -1,9 +1,9 @@
 package hw10programoptimization
 
 import (
+	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strings"
 )
 
@@ -29,14 +29,14 @@ func GetDomainStat(r io.Reader, domain string) (DomainStat, error) {
 }
 
 func countDomains(dict *DomainStat, r io.Reader, domain string) error {
-	content, err := ioutil.ReadAll(r)
-	if err != nil {
-		return err
-	}
+	reader := bufio.NewReader(r)
 	var fullDomain string
 	var user User
-	lines := strings.Split(string(content), "\n")
-	for _, line := range lines {
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			return err
+		}
 		if err = user.UnmarshalJSON([]byte(line)); err != nil {
 			return err
 		}
@@ -44,6 +44,28 @@ func countDomains(dict *DomainStat, r io.Reader, domain string) error {
 			fullDomain = strings.ToLower(strings.Split(user.Email, "@")[1])
 			(*dict)[fullDomain] = (*dict)[fullDomain] + 1
 		}
+		if err == io.EOF {
+			break
+		}
 	}
 	return nil
 }
+
+//func getUsers(r *bufio.Reader) (users, error) {
+//	var user User
+//	result := make([]User, 0)
+//	for {
+//		line, err := r.ReadString('\n')
+//		if err != nil && err != io.EOF {
+//			return []User{}, err
+//		}
+//		if err := jsoniter.Unmarshal([]byte(line), &user); err != nil {
+//			return []User{}, err
+//		}
+//		result = append(result, user)
+//		if err == io.EOF {
+//			break
+//		}
+//	}
+//	return result, nil
+//}
