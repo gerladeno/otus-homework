@@ -19,25 +19,23 @@ const (
 )
 
 func BenchmarkGetDomainStat(b *testing.B) {
-	bench := func(b *testing.B) {
-		b.StopTimer()
-		r, err := zip.OpenReader("testdata/users.dat.zip")
-		if err != nil {
-			log.Fatal(err)
-		}
-		data, err := r.File[0].Open()
-		if err != nil {
-			log.Fatal(err)
-		}
-		b.StartTimer()
-		for i := 0; i < b.N; i++ {
-			for _, domain := range []string{"biz", "com", "ru", "gov", "info"} {
-				_, _ = GetDomainStat(data, domain)
-			}
-		}
-		b.StopTimer()
+	b.StopTimer()
+	r, err := zip.OpenReader("testdata/users.dat.zip")
+	if err != nil {
+		log.Fatal(err)
 	}
-	_ = testing.Benchmark(bench)
+	defer r.Close()
+	data, err := r.File[0].Open()
+	if err != nil {
+		log.Fatal(err)
+	}
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		for _, domain := range []string{"biz", "com", "ru", "gov", "info"} {
+			_, _ = GetDomainStat(data, domain)
+		}
+	}
+	b.StopTimer()
 }
 
 // go test -v -count=1 -timeout=30s -tags bench .
