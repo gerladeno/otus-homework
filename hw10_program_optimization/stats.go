@@ -20,40 +20,30 @@ type User struct {
 type DomainStat map[string]int
 
 func GetDomainStat(r io.Reader, domain string) (DomainStat, error) {
-	u, err := getUsers(r)
+	dict := make(DomainStat)
+	err := countDomains(&dict, r, domain)
 	if err != nil {
 		return nil, fmt.Errorf("get users error: %w", err)
 	}
-	return countDomains(&u, domain)
+	return dict, nil
 }
 
-type users [100000]User
-//type users []User
-
-func getUsers(r io.Reader) (result users, err error) {
+func countDomains(dict *DomainStat, r io.Reader, domain string) error {
 	content, err := ioutil.ReadAll(r)
 	if err != nil {
-		return
+		return err
 	}
+	var fullDomain string
 	var user User
 	lines := strings.Split(string(content), "\n")
-	for i, line := range lines {
+	for _, line := range lines {
 		if err = user.UnmarshalJSON([]byte(line)); err != nil {
-			return
+			return err
 		}
-		result[i] = user
-	}
-	return
-}
-
-func countDomains(u *users, domain string) (DomainStat, error) {
-	result := make(DomainStat)
-	var fullDomain string
-	for _, user := range *u {
 		if strings.HasSuffix(user.Email, domain) {
 			fullDomain = strings.ToLower(strings.Split(user.Email, "@")[1])
-			result[fullDomain] = result[fullDomain] + 1
+			(*dict)[fullDomain] = (*dict)[fullDomain] + 1
 		}
 	}
-	return result, nil
+	return nil
 }
