@@ -9,13 +9,13 @@ import (
 )
 
 type User struct {
-	//ID       int
-	//Name     string
-	//Username string
+	ID       int
+	Name     string
+	Username string
 	Email    string
-	//Phone    string
-	//Password string
-	//Address  string
+	Phone    string
+	Password string
+	Address  string
 }
 
 type DomainStat map[string]int
@@ -33,14 +33,14 @@ func countDomains(r io.Reader, domain string) (*DomainStat, error) {
 	reader := bufio.NewReader(r)
 	var fullDomain string
 	var user User
-	var line string
+	var line []byte
 	var err error
 	for {
-		line, err = reader.ReadString('\n')
+		line, _, err = reader.ReadLine()
 		if err != nil && err != io.EOF {
 			return nil, err
 		}
-		user.UnmarshalEasyJSON(&jlexer.Lexer{Data: []byte(line)})
+		user.UnmarshalEasyJSON(&jlexer.Lexer{Data: line})
 		if strings.HasSuffix(user.Email, domain) {
 			fullDomain = strings.ToLower(strings.Split(user.Email, "@")[1])
 			dict[fullDomain] ++
