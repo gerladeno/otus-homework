@@ -24,11 +24,11 @@ func BenchmarkGetDomainStat(b *testing.B) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer r.Close()
 	data, err := r.File[0].Open()
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer r.Close()
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
 		for _, domain := range []string{"biz", "com", "ru", "gov", "info"} {

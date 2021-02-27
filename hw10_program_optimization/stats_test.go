@@ -95,9 +95,9 @@ func TestGetDomainStat(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, DomainStat{}, result)
 	})
-	
+
 	t.Run("broken input", func(t *testing.T) {
-		
+
 	})
 }
 
