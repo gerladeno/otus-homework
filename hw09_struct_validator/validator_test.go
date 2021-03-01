@@ -3,8 +3,9 @@ package hw09structvalidator
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 type UserRole string
@@ -89,6 +90,22 @@ func TestValidate(t *testing.T) {
 			ValidationError{"Role", ErrInvalidStringValue},
 			ValidationError{"Phones", fmt.Errorf("%w\n%s", ErrInvalidSlice, "1: string length exceeds the limit\n")},
 		}},
+		{User{
+			ID:     "longLongLongLongLongLongLongLongLongLongLongLongLongName",
+			Name:   "",
+			Age:    77,
+			Email:  "zhopa",
+			Role:   "slave",
+			Phones: []string{"1", "123456789012"},
+			meta:   nil,
+		}, ValidationErrors{
+			ValidationError{"ID", ErrInvalidStringLength},
+			ValidationError{"Age", ErrInvalidIntMax},
+			ValidationError{"Email", ErrInvalidStringRegexp},
+			ValidationError{"Role", ErrInvalidStringValue},
+			ValidationError{"Phones", fmt.Errorf("%w\n%s", ErrInvalidSlice, "1: string length exceeds the limit\n")},
+		}},
+
 		{Embedded{
 			Value1:    -3,
 			Value2:    80,
