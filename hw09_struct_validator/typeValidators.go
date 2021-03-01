@@ -36,7 +36,7 @@ func validateString(field reflect.Value, validators string) error {
 			return err
 		}
 	}
-	return err
+	return nil
 }
 
 func validateInt(field reflect.Value, validators string) error {
@@ -56,7 +56,7 @@ func validateInt(field reflect.Value, validators string) error {
 			return err
 		}
 	}
-	return err
+	return nil
 }
 
 type sliceErr struct {
