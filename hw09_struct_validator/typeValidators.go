@@ -20,35 +20,43 @@ var ErrInvalidStringLength = errors.New("string length exceeds the limit")
 var ErrInvalidSlice = errors.New("invalid slice")
 
 func validateString(field reflect.Value, validators string) error {
+	var err error
 	for _, validator := range strings.Split(validators, "|") {
 		switch {
 		case strings.HasPrefix(validator, "len:"):
-			return validateStringLen(field.String(), validator[4:])
+			err = validateStringLen(field.String(), validator[4:])
 		case strings.HasPrefix(validator, "in:"):
-			return validateStringInValues(field.String(), validator[3:])
+			err = validateStringInValues(field.String(), validator[3:])
 		case strings.HasPrefix(validator, "regexp:"):
-			return validateStringMatchRe(field.String(), validator[7:])
+			err = validateStringMatchRe(field.String(), validator[7:])
 		default:
-			return ErrUnknownStringValidator
+			err = ErrUnknownStringValidator
+		}
+		if err != nil {
+			return err
 		}
 	}
-	return nil
+	return err
 }
 
 func validateInt(field reflect.Value, validators string) error {
+	var err error
 	for _, validator := range strings.Split(validators, "|") {
 		switch {
 		case strings.HasPrefix(validator, "in:"):
-			return validateIntIn(int(field.Int()), validator[3:])
+			err = validateIntIn(int(field.Int()), validator[3:])
 		case strings.HasPrefix(validator, "min:"):
-			return validateIntMin(int(field.Int()), validator[4:])
+			err = validateIntMin(int(field.Int()), validator[4:])
 		case strings.HasPrefix(validator, "max:"):
-			return validateIntMax(int(field.Int()), validator[4:])
+			err = validateIntMax(int(field.Int()), validator[4:])
 		default:
-			return ErrUnknownIntValidator
+			err = ErrUnknownIntValidator
+		}
+		if err != nil {
+			return err
 		}
 	}
-	return nil
+	return err
 }
 
 type sliceErr struct {
