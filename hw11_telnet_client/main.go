@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"github.com/spf13/pflag"
 	"log"
 	"net"
@@ -22,7 +23,7 @@ func main() {
 		log.Fatal("too few arguments")
 	}
 
-	telnet := NewTelnetClient(net.JoinHostPort(args[0], args[1]), timeout, os.Stdout, os.Stdin)
+	telnet := NewTelnetClient(net.JoinHostPort(args[0], args[1]), timeout, os.Stdin, os.Stdout)
 
 	if err := startTelnet(telnet); err != nil {
 		log.Fatal(err)
@@ -35,21 +36,28 @@ func startTelnet(telnet TelnetClient) error {
 		return err
 	}
 
-	errCh := make(chan error)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go worker(telnet.Receive, cancel)
+	go worker(telnet.Send, cancel)
+
+	signalChan := make(chan os.Signal)
+
 	go func() {
-		signalChan := make(chan os.Signal)
 		signal.Notify(signalChan, syscall.SIGINT)
-		<-signalChan
-		err := telnet.Close()
-		errCh <- err
 	}()
-	go func() {
-		err := telnet.Send()
-		errCh <- err
-	}()
-	go func() {
-		err := telnet.Receive()
-		errCh <- err
-	}()
-	return <-errCh
+	select {
+	case <-signalChan:
+		cancel()
+		signal.Stop(signalChan)
+	case <-ctx.Done():
+		close(signalChan)
+	}
+	return nil
+}
+
+func worker(handler func() error, cancel context.CancelFunc) {
+	if err := handler(); err != nil {
+		cancel()
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"net"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -61,5 +62,11 @@ func TestTelnetClient(t *testing.T) {
 		}()
 
 		wg.Wait()
+	})
+
+	t.Run("connect to wrong port", func(t *testing.T) {
+		d := 10 * time.Second
+		client := NewTelnetClient("localhost:121231321", d, os.Stdin, os.Stdout)
+		require.Error(t, client.Connect())
 	})
 }

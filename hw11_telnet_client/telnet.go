@@ -2,7 +2,6 @@ package main
 
 import (
 	"io"
-	"io/ioutil"
 	"net"
 	"time"
 )
@@ -43,17 +42,7 @@ func (c *Client) Receive() error {
 }
 
 func (c *Client) readWrite(rd io.Reader, wr io.Writer) error {
-	data, err := ioutil.ReadAll(rd)
-	if err != nil && err != io.EOF {
-		return err
-	}
-	if err == io.EOF {
-		_, err = wr.Write(data)
-		if err := c.Close(); err != nil {
-			return err
-		}
-	}
-	_, err = wr.Write(data)
+	_, err := io.Copy(wr, rd)
 	return err
 }
 
