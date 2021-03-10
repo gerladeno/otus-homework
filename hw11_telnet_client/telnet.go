@@ -29,7 +29,6 @@ func (c *Client) Connect() error {
 
 func (c *Client) Close() error {
 	err := c.connection.Close()
-	err = c.in.Close()
 	return err
 }
 
@@ -48,9 +47,9 @@ func (c *Client) readWrite(rd io.Reader, wr io.Writer) error {
 
 func NewTelnetClient(address string, timeout time.Duration, in io.ReadCloser, out io.Writer) TelnetClient {
 	return &Client{
-		address:    address,
-		timeout:    timeout,
-		in:         in,
-		out:        out,
+		address: address,
+		timeout: timeout,
+		in:      in,
+		out:     out,
 	}
 }

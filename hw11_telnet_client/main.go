@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"github.com/spf13/pflag"
 	"log"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/spf13/pflag"
 )
 
 func main() {
