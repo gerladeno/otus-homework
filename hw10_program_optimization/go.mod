@@ -1,5 +1,8 @@
-module github.com/fixme_my_friend/hw10_program_optimization
+module github.com/gerladeno/otus-homeworks/hw10_program_optimization
 
-go 1.15
+go 1.16
 
-require github.com/stretchr/testify v1.5.1
+require (
+	github.com/mailru/easyjson v0.7.7
+	github.com/stretchr/testify v1.7.0
+)

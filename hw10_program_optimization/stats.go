@@ -1,12 +1,13 @@
-package hw10_program_optimization //nolint:golint,stylecheck
+package hw10programoptimization
 
 import (
-	"encoding/json"
+	"bufio"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"regexp"
 	"strings"
+
+	"github.com/mailru/easyjson/jlexer"
 )
 
 type User struct {
@@ -22,46 +23,34 @@ type User struct {
 type DomainStat map[string]int
 
 func GetDomainStat(r io.Reader, domain string) (DomainStat, error) {
-	u, err := getUsers(r)
+	dict, err := countDomains(r, domain)
 	if err != nil {
-		return nil, fmt.Errorf("get users error: %s", err)
+		return nil, fmt.Errorf("get users error: %w", err)
 	}
-	return countDomains(u, domain)
+	return *dict, nil
 }
 
-type users [100_000]User
-
-func getUsers(r io.Reader) (result users, err error) {
-	content, err := ioutil.ReadAll(r)
-	if err != nil {
-		return
-	}
-
-	lines := strings.Split(string(content), "\n")
-	for i, line := range lines {
-		var user User
-		if err = json.Unmarshal([]byte(line), &user); err != nil {
-			return
-		}
-		result[i] = user
-	}
-	return
-}
-
-func countDomains(u users, domain string) (DomainStat, error) {
-	result := make(DomainStat)
-
-	for _, user := range u {
-		matched, err := regexp.Match("\\."+domain, []byte(user.Email))
-		if err != nil {
+func countDomains(r io.Reader, domain string) (*DomainStat, error) {
+	dict := make(DomainStat)
+	reader := bufio.NewReader(r)
+	var fullDomain string
+	var user User
+	var line []byte
+	var err error
+	for {
+		line, _, err = reader.ReadLine()
+		if err != nil && !errors.Is(err, io.EOF) {
 			return nil, err
 		}
-
-		if matched {
-			num := result[strings.ToLower(strings.SplitN(user.Email, "@", 2)[1])]
-			num++
-			result[strings.ToLower(strings.SplitN(user.Email, "@", 2)[1])] = num
+		user = User{}
+		user.UnmarshalEasyJSON(&jlexer.Lexer{Data: line})
+		if strings.HasSuffix(user.Email, domain) {
+			fullDomain = strings.ToLower(strings.Split(user.Email, "@")[1])
+			dict[fullDomain]++
+		}
+		if errors.Is(err, io.EOF) {
+			break
 		}
 	}
-	return result, nil
+	return &dict, nil
 }
