@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -13,18 +14,19 @@ import (
 )
 
 func main() {
-	timeoutFlag := pflag.String("timeout", "30s", "specify duration, default - 30s")
+	timeout := pflag.Duration("timeout", 30*time.Second, "specify duration, default - 30s")
 	pflag.Parse()
-	timeout, err := time.ParseDuration(*timeoutFlag)
-	if err != nil {
-		log.Fatal("invalid timeout")
-	}
 	args := pflag.CommandLine.Args()
 	if len(args) < 2 {
 		log.Fatal("too few arguments")
 	}
+	host := args[0]
+	port := args[1]
+	if i, err := strconv.Atoi(port); err != nil || i < 1 || i > 65535 {
+		log.Fatal("invalid port")
+	}
 
-	telnet := NewTelnetClient(net.JoinHostPort(args[0], args[1]), timeout, os.Stdin, os.Stdout)
+	telnet := NewTelnetClient(net.JoinHostPort(host, port), *timeout, os.Stdin, os.Stdout)
 
 	if err := startTelnet(telnet); err != nil {
 		log.Fatal(err)
@@ -42,11 +44,9 @@ func startTelnet(telnet TelnetClient) error {
 	go worker(telnet.Receive, cancel)
 	go worker(telnet.Send, cancel)
 
-	signalChan := make(chan os.Signal)
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT)
 
-	go func() {
-		signal.Notify(signalChan, syscall.SIGINT)
-	}()
 	select {
 	case <-signalChan:
 		cancel()

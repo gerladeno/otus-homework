@@ -2,6 +2,7 @@ package main
 
 import (
 	"io"
+	"log"
 	"net"
 	"time"
 )
@@ -21,30 +22,6 @@ type Client struct {
 	connection net.Conn
 }
 
-func (c *Client) Connect() error {
-	var err error
-	c.connection, err = net.DialTimeout("tcp", c.address, c.timeout)
-	return err
-}
-
-func (c *Client) Close() error {
-	err := c.connection.Close()
-	return err
-}
-
-func (c *Client) Send() error {
-	return c.readWrite(c.in, c.connection)
-}
-
-func (c *Client) Receive() error {
-	return c.readWrite(c.connection, c.out)
-}
-
-func (c *Client) readWrite(rd io.Reader, wr io.Writer) error {
-	_, err := io.Copy(wr, rd)
-	return err
-}
-
 func NewTelnetClient(address string, timeout time.Duration, in io.ReadCloser, out io.Writer) TelnetClient {
 	return &Client{
 		address: address,
@@ -52,4 +29,44 @@ func NewTelnetClient(address string, timeout time.Duration, in io.ReadCloser, ou
 		in:      in,
 		out:     out,
 	}
+}
+
+func (c *Client) Connect() error {
+	var err error
+	c.connection, err = net.DialTimeout("tcp", c.address, c.timeout)
+	log.Printf("...Connected to %s", c.address)
+	return err
+}
+
+func (c *Client) Close() (err error) {
+	if err = c.in.Close(); err != nil {
+		return
+	}
+	err = c.connection.Close()
+	return
+}
+
+func (c *Client) Send() (err error) {
+	err = c.readWrite(c.in, c.connection)
+	return
+}
+
+func (c *Client) Receive() (err error) {
+	err = c.readWrite(c.connection, c.out)
+	return
+}
+
+func (c *Client) readWrite(rd io.Reader, wr io.Writer) (err error) {
+	if c.connection == nil {
+		return
+	}
+	//scanner := bufio.NewScanner(c.in)
+	if _, err := io.Copy(wr, rd); err != nil {
+		if err == io.EOF {
+			log.Printf("...EOF")
+		}
+		log.Printf("...Connection was closed by peer")
+		return err
+	}
+	return nil
 }
