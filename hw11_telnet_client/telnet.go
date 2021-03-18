@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"io"
 	"log"
 	"net"
@@ -60,9 +61,8 @@ func (c *Client) readWrite(rd io.Reader, wr io.Writer) (err error) {
 	if c.connection == nil {
 		return
 	}
-	//scanner := bufio.NewScanner(c.in)
 	if _, err := io.Copy(wr, rd); err != nil {
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			log.Printf("...EOF")
 		}
 		log.Printf("...Connection was closed by peer")
