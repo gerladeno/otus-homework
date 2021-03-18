@@ -1,20 +1,50 @@
 package main
 
-// При желании конфигурацию можно вынести в internal/config.
-// Организация конфига в main принуждает нас сужать API компонентов, использовать
-// при их конструировании только необходимые параметры, а также уменьшает вероятность циклической зависимости.
+import (
+	"encoding/json"
+	"io/ioutil"
+	"log"
+	"path/filepath"
+)
+
 type Config struct {
-	Logger LoggerConf
-	// TODO
+	Logger  LoggerConf
+	Storage StorageConf
 }
 
 type LoggerConf struct {
-	Level string
-	// TODO
+	Level string `json:"level"`
+	Path  string `json:"path"`
 }
 
-func NewConfig() Config {
-	return Config{}
+type StorageConf struct {
+	Remote   bool   `json:"remote"`
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
+	Database string `json:"database"`
+	Ssl      string `json:"ssl"`
 }
 
-// TODO
+func NewConfig(path string) Config {
+	if path == "" {
+		path = filepath.Join("configs", "config.json")
+	}
+	configJSON, err := ioutil.ReadFile(path)
+	if err != nil {
+		return defaultConfig()
+	}
+	config := Config{}
+	err = json.Unmarshal(configJSON, &config)
+	if err != nil {
+		return defaultConfig()
+	}
+	return config
+}
+
+func defaultConfig() Config {
+	log.Print("failed to config properly, using default settings...")
+	return Config{
+		Logger:  LoggerConf{"Debug", "stdout"},
+		Storage: StorageConf{Remote: false},
+	}
+}

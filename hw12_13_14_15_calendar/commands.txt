@@ -1,0 +1,5 @@
+# start
+docker-compose -f deployments/docker-compose.yaml up
+
+# migrate
+goose -dir internal/storage/sql/migrations postgres "user=calendar password=calendar dbname=postgres sslmode=disable" up

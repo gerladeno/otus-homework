@@ -3,15 +3,20 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/fixme_my_friend/hw12_13_14_15_calendar/internal/app"
-	"github.com/fixme_my_friend/hw12_13_14_15_calendar/internal/logger"
-	internalhttp "github.com/fixme_my_friend/hw12_13_14_15_calendar/internal/server/http"
-	memorystorage "github.com/fixme_my_friend/hw12_13_14_15_calendar/internal/storage/memory"
+	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/storage/common"
+	memorystorage "github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/storage/memory"
+	sqlstorage "github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/storage/sql"
+	_ "github.com/jackc/pgx/v4/stdlib"
+
+	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/app"
+	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/logger"
+	internalhttp "github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/server/http"
 )
 
 var configFile string
@@ -28,11 +33,48 @@ func main() {
 		return
 	}
 
-	config := NewConfig()
-	logg := logger.New(config.Logger.Level)
+	config := NewConfig(configFile)
+	log := logger.New(config.Logger.Level, config.Logger.Path)
 
-	storage := memorystorage.New()
-	calendar := app.New(logg, storage)
+	var (
+		storage common.Storage
+		err     error
+	)
+	if config.Storage.Remote {
+		dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+			config.Storage.Host,
+			config.Storage.Port,
+			"calendar",
+			"calendar",
+			config.Storage.Database,
+			config.Storage.Ssl)
+		storage, err = sqlstorage.New(log, dsn)
+		if err != nil {
+			log.Fatalf("failed to connect to database: %s", err)
+		}
+	} else {
+		storage = memorystorage.New(log)
+	}
+
+	_, _ = storage.AddEvent(context.Background(), common.Event{
+		ID:         0,
+		Title:      "jopa",
+		StartTime:  time.Now(),
+		Duration:   0,
+		InviteList: "",
+		Comment:    "gavno",
+	})
+	_ = storage.EditEvent(context.Background(), 0, common.Event{
+		ID:         0,
+		Title:      "triJopi",
+		StartTime:  time.Now(),
+		Duration:   10,
+		InviteList: "",
+		Comment:    "PoloeGavno",
+	})
+	_ = storage.RemoveEvent(context.Background(), 0)
+
+	calendar := app.New(log, storage)
 
 	server := internalhttp.NewServer(calendar)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -55,14 +97,14 @@ func main() {
 		defer cancel()
 
 		if err := server.Stop(ctx); err != nil {
-			logg.Error("failed to stop http server: " + err.Error())
+			log.Error("failed to stop http server: " + err.Error())
 		}
 	}()
 
-	logg.Info("calendar is running...")
+	log.Info("calendar is running...")
 
 	if err := server.Start(ctx); err != nil {
-		logg.Error("failed to start http server: " + err.Error())
+		log.Error("failed to start http server: " + err.Error())
 		cancel()
 		os.Exit(1) //nolint:gocritic
 	}
