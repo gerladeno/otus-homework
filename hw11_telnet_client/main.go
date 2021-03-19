@@ -45,11 +45,11 @@ func startTelnet(telnet TelnetClient) error {
 	go worker(telnet.Send, cancel)
 
 	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, syscall.SIGINT)
-
+	signal.Notify(signalChan, syscall.SIGTERM, syscall.SIGINT, os.Interrupt)
 	select {
 	case <-signalChan:
 		cancel()
+		log.Print("terminated by SIGINT...")
 		signal.Stop(signalChan)
 	case <-ctx.Done():
 		close(signalChan)
@@ -58,7 +58,10 @@ func startTelnet(telnet TelnetClient) error {
 }
 
 func worker(handler func() error, cancel context.CancelFunc) {
-	if err := handler(); err != nil {
-		cancel()
+	for {
+		if err := handler(); err != nil {
+			cancel()
+			return
+		}
 	}
 }

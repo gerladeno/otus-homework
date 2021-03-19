@@ -35,8 +35,11 @@ func NewTelnetClient(address string, timeout time.Duration, in io.ReadCloser, ou
 func (c *Client) Connect() error {
 	var err error
 	c.connection, err = net.DialTimeout("tcp", c.address, c.timeout)
+	if err != nil {
+		return err
+	}
 	log.Printf("...Connected to %s", c.address)
-	return err
+	return nil
 }
 
 func (c *Client) Close() (err error) {
@@ -61,12 +64,43 @@ func (c *Client) readWrite(rd io.Reader, wr io.Writer) (err error) {
 	if c.connection == nil {
 		return
 	}
-	if _, err := io.Copy(wr, rd); err != nil {
+	if err = copyWithEOF(wr, rd); err != nil {
 		if errors.Is(err, io.EOF) {
 			log.Printf("...EOF")
+			return err
 		}
 		log.Printf("...Connection was closed by peer")
 		return err
 	}
 	return nil
+}
+
+func copyWithEOF(dst io.Writer, src io.Reader) (err error) {
+	size := 32 * 1024
+	buf := make([]byte, size)
+	for {
+		nr, er := src.Read(buf)
+		if nr > 0 {
+			nw, ew := dst.Write(buf[0:nr])
+			if nw < 0 || nr < nw {
+				nw = 0
+				if ew == nil {
+					ew = errors.New("invalid write result")
+				}
+			}
+			if ew != nil {
+				err = ew
+				break
+			}
+			if nr != nw {
+				err = io.ErrShortWrite
+				break
+			}
+		}
+		if er != nil {
+			err = er
+			break
+		}
+	}
+	return err
 }
