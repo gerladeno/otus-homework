@@ -61,13 +61,10 @@ func (c *Client) Receive() (err error) {
 }
 
 func (c *Client) readWrite(rd io.Reader, wr io.Writer) (err error) {
-	if c.connection == nil {
-		return
-	}
 	if err = copyWithEOF(wr, rd); err != nil {
 		if errors.Is(err, io.EOF) {
 			log.Printf("...EOF")
-			return err
+			return nil
 		}
 		log.Printf("...Connection was closed by peer")
 		return err

@@ -58,10 +58,8 @@ func startTelnet(telnet TelnetClient) error {
 }
 
 func worker(handler func() error, cancel context.CancelFunc) {
-	for {
-		if err := handler(); err != nil {
-			cancel()
-			return
-		}
+	if err := handler(); err != nil {
+		cancel()
 	}
+	cancel()
 }
