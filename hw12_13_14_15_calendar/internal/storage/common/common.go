@@ -6,13 +6,16 @@ import (
 	"time"
 )
 
+const PgTimeStampFmt = `2006-01-02 15:04:05`
+
 var ErrNoSuchEvent = errors.New("no such event")
 
 type Storage interface {
+	GetEvent(id uint64) (*Event, error)
 	AddEvent(ctx context.Context, event Event) (uint64, error)
 	EditEvent(ctx context.Context, id uint64, event Event) error
 	RemoveEvent(ctx context.Context, id uint64) error
-	ListEvents(ctx context.Context) ([]Event, error)
+	ListEvents() ([]Event, error)
 }
 
 type Event struct {

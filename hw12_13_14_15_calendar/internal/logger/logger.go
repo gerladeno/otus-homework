@@ -17,7 +17,7 @@ func New(levelStr, path string) *logrus.Logger {
 		log.Out = os.Stdout
 	default:
 		if _, err := os.Stat(path); os.IsNotExist(err) {
-			if err = os.MkdirAll(path, 0644); err != nil {
+			if err = os.MkdirAll(path, 0o644); err != nil {
 				log.Warn("failed to find or create log directory, using stderr")
 				log.Out = os.Stderr
 			}
