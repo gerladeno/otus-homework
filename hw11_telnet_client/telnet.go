@@ -77,7 +77,7 @@ func copyWithEOF(dst io.Writer, src io.Reader) (err error) {
 	buf := make([]byte, size)
 	for {
 		nr, er := src.Read(buf)
-		if nr > 0 {
+		if nr > 0 { //nolint
 			nw, ew := dst.Write(buf[0:nr])
 			if nw < 0 || nr < nw {
 				nw = 0
