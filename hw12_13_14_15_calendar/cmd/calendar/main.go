@@ -55,24 +55,6 @@ func main() {
 		storage = memorystorage.New(log)
 	}
 
-	_, _ = storage.AddEvent(context.Background(), common.Event{
-		ID:         0,
-		Title:      "jopa",
-		StartTime:  time.Now(),
-		Duration:   0,
-		InviteList: "",
-		Comment:    "gavno",
-	})
-	_ = storage.EditEvent(context.Background(), 0, common.Event{
-		ID:         0,
-		Title:      "triJopi",
-		StartTime:  time.Now(),
-		Duration:   10,
-		InviteList: "",
-		Comment:    "PoloeGavno",
-	})
-	_ = storage.RemoveEvent(context.Background(), 0)
-
 	calendar := app.New(log, storage)
 
 	server := internalhttp.NewServer(calendar, storage, log, version)
