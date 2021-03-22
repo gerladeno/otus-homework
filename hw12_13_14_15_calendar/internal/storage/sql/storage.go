@@ -45,8 +45,8 @@ func New(log *logrus.Logger, dsn string) (*Storage, error) {
 }
 
 func (s *Storage) GetEvent(id uint64) (*common.Event, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	if elem, ok := s.events[id]; ok {
 		return &elem, nil
 	}
@@ -54,15 +54,15 @@ func (s *Storage) GetEvent(id uint64) (*common.Event, error) {
 }
 
 func (s *Storage) AddEvent(ctx context.Context, event common.Event) (uint64, error) {
-	s.mu.Lock()
+	s.mu.RLock()
 	id := s.counter
-	s.mu.Unlock()
+	s.mu.RUnlock()
 	event.ID = id
 	event.Created = time.Now()
 	event.Updated = time.Now()
 	query := fmt.Sprintf(`
 INSERT INTO events (id, title, start_time, duration, invite_list, comment) VALUES (%d, '%s', '%s', %d, '%s', '%s')
-`, id, event.Title, event.StartTime.Format(common.PgTimeStampFmt), int(event.Duration.Seconds()), event.InviteList, event.Comment)
+`, id, event.Title, event.StartTime.Format(common.PgTimestampFmt), int(event.Duration.Seconds()), event.InviteList, event.Comment)
 	_, err := s.db.ExecContext(ctx, query)
 	if err != nil {
 		s.log.Warn("failed to add event ", id)
@@ -79,12 +79,13 @@ INSERT INTO events (id, title, start_time, duration, invite_list, comment) VALUE
 func (s *Storage) EditEvent(ctx context.Context, id uint64, event common.Event) error {
 	event.ID = id
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	event.Created = s.events[id].Created
 	event.Updated = time.Now()
 	query := fmt.Sprintf(`
 UPDATE events SET (title, start_time, duration, invite_list, comment, created) = ('%s', '%s', %d, '%s', '%s', '%s')
 WHERE id = %d
-`, event.Title, event.StartTime.Format(common.PgTimeStampFmt), int(event.Duration.Seconds()), event.InviteList, event.Comment, event.Created.Format(common.PgTimeStampFmt), id)
+`, event.Title, event.StartTime.Format(common.PgTimestampFmt), int(event.Duration.Seconds()), event.InviteList, event.Comment, event.Created.Format(common.PgTimestampFmt), id)
 	_, err := s.db.ExecContext(ctx, query)
 	if err != nil {
 		s.log.Warn("failed to edit event ", id)
@@ -94,15 +95,17 @@ WHERE id = %d
 		return common.ErrNoSuchEvent
 	}
 	s.events[id] = event
-	s.mu.Unlock()
 	s.log.Trace("modified event ", id)
 	return nil
 }
 
 func (s *Storage) RemoveEvent(ctx context.Context, id uint64) error {
+	s.mu.RLock()
 	if _, ok := s.events[id]; !ok {
+		s.mu.RUnlock()
 		return common.ErrNoSuchEvent
 	}
+	s.mu.RUnlock()
 	query := fmt.Sprintf(`DELETE FROM events WHERE id = %d`, id)
 	_, err := s.db.ExecContext(ctx, query)
 	if err != nil {

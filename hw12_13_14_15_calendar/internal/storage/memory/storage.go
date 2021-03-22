@@ -30,7 +30,7 @@ func (s *Storage) GetEvent(id uint64) (*common.Event, error) {
 	return nil, common.ErrNoSuchEvent
 }
 
-func (s *Storage) AddEvent(ctx context.Context, event common.Event) (uint64, error) {
+func (s *Storage) AddEvent(_ context.Context, event common.Event) (uint64, error) {
 	event.Created = time.Now()
 	event.Updated = time.Now()
 	s.mu.Lock()
@@ -43,7 +43,7 @@ func (s *Storage) AddEvent(ctx context.Context, event common.Event) (uint64, err
 	return id, nil
 }
 
-func (s *Storage) EditEvent(ctx context.Context, id uint64, event common.Event) error {
+func (s *Storage) EditEvent(_ context.Context, id uint64, event common.Event) error {
 	event.ID = id
 	s.mu.Lock()
 	event.Created = s.events[id].Created
@@ -57,7 +57,7 @@ func (s *Storage) EditEvent(ctx context.Context, id uint64, event common.Event) 
 	return nil
 }
 
-func (s *Storage) RemoveEvent(ctx context.Context, id uint64) error {
+func (s *Storage) RemoveEvent(_ context.Context, id uint64) error {
 	if _, ok := s.events[id]; !ok {
 		return common.ErrNoSuchEvent
 	}

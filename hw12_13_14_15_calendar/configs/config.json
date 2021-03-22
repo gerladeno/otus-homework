@@ -9,5 +9,8 @@
     "port": 5432,
     "database": "postgres",
     "ssl": "disable"
+  },
+  "http": {
+    "port": 3000
   }
 }

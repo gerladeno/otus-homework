@@ -16,7 +16,7 @@ func TestStorage(t *testing.T) {
 	t.Run("CRUD", func(t *testing.T) {
 		log := logrus.New()
 		events := New(log)
-		tt, err := time.Parse(common.PgTimeStampFmt, "2020-01-01 00:00:00")
+		tt, err := time.Parse(common.PgTimestampFmt, "2020-01-01 00:00:00")
 		require.NoError(t, err)
 		id, err := events.AddEvent(context.Background(), common.Event{
 			Title:      "First",

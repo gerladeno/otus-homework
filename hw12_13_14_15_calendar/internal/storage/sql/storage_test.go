@@ -18,7 +18,7 @@ func TestStorage(t *testing.T) {
 	log := logrus.New()
 	events, err := New(log, "host=localhost port=5432 user=calendar password=calendar dbname=postgres sslmode=disable")
 	require.NoError(t, err)
-	tt, err := time.Parse(common.PgTimeStampFmt, "2020-01-01 00:00:00")
+	tt, err := time.Parse(common.PgTimestampFmt, "2020-01-01 00:00:00")
 	require.NoError(t, err)
 	id, err := events.AddEvent(context.Background(), common.Event{
 		Title:      "First",
