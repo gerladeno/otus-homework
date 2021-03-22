@@ -3,25 +3,28 @@ package internalhttp
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
+	"strconv"
+
 	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/storage/common"
 	"github.com/go-chi/chi"
 	"github.com/sirupsen/logrus"
-	"net/http"
-	"strconv"
 )
 
-var ErrWrongEventId = errors.New("invalid or empty id")
-var ErrEmptyRequestBody = errors.New("empty request body")
-var ErrUnparsableEvent = errors.New("err parsing event")
+var (
+	ErrWrongEventID     = errors.New("invalid or empty id")
+	ErrEmptyRequestBody = errors.New("empty request body")
+	ErrUnparsableEvent  = errors.New("err parsing event")
+)
 
-type JsonResponse struct {
+type JSONResponse struct {
 	Data  *interface{} `json:"data,omitempty"`
-	Error *string     `json:"error,omitempty"`
-	Code  int         `json:"code"`
+	Error *string      `json:"error,omitempty"`
+	Code  int          `json:"code"`
 }
 
-type Id struct {
-	Id uint64 `json:"id"`
+type ID struct {
+	ID uint64 `json:"id"`
 }
 
 func listEventsHandler(storage common.Storage, log *logrus.Logger) func(w http.ResponseWriter, r *http.Request) {
@@ -32,22 +35,22 @@ func listEventsHandler(storage common.Storage, log *logrus.Logger) func(w http.R
 			writeErrResponse(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		writeOkResponse(w, events, http.StatusOK)
+		writeOkResponse(w, events)
 	}
 }
 
 func getEventHandler(storage common.Storage, log *logrus.Logger) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := parseIdParam(r)
+		id, err := parseIDParam(r)
 		if err != nil {
-			writeErrResponse(w, ErrWrongEventId.Error(), http.StatusBadRequest)
+			writeErrResponse(w, ErrWrongEventID.Error(), http.StatusBadRequest)
 			log.Debug(err)
 			return
 		}
 		event, err := storage.GetEvent(id)
 		if err != nil {
 			if errors.Is(err, common.ErrNoSuchEvent) {
-				log.Debug("failed to get an event %d: %s", id, err.Error())
+				log.Debugf("failed to get an event %d: %s", id, err.Error())
 				writeErrResponse(w, err.Error(), http.StatusNotFound)
 				return
 			}
@@ -55,22 +58,22 @@ func getEventHandler(storage common.Storage, log *logrus.Logger) func(w http.Res
 			writeErrResponse(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		writeOkResponse(w, event, http.StatusOK)
+		writeOkResponse(w, event)
 	}
 }
 
 func removeEventHandler(storage common.Storage, log *logrus.Logger) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := parseIdParam(r)
+		id, err := parseIDParam(r)
 		if err != nil {
-			writeErrResponse(w, ErrWrongEventId.Error(), http.StatusBadRequest)
+			writeErrResponse(w, ErrWrongEventID.Error(), http.StatusBadRequest)
 			log.Debug(err)
 			return
 		}
 		err = storage.RemoveEvent(r.Context(), id)
 		if err != nil {
 			if errors.Is(err, common.ErrNoSuchEvent) {
-				log.Debug("failed to remove an event %d: %s", id, err.Error())
+				log.Debugf("failed to remove an event %d: %s", id, err.Error())
 				writeErrResponse(w, err.Error(), http.StatusNotFound)
 				return
 			}
@@ -78,7 +81,7 @@ func removeEventHandler(storage common.Storage, log *logrus.Logger) func(w http.
 			writeErrResponse(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		writeOkResponse(w, Id{Id: id}, http.StatusOK)
+		writeOkResponse(w, ID{ID: id})
 	}
 }
 
@@ -101,15 +104,15 @@ func addEventHandler(storage common.Storage, log *logrus.Logger) func(w http.Res
 			writeErrResponse(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		writeOkResponse(w, Id{Id: id}, http.StatusOK)
+		writeOkResponse(w, ID{ID: id})
 	}
 }
 
 func editEventHandler(storage common.Storage, log *logrus.Logger) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := parseIdParam(r)
+		id, err := parseIDParam(r)
 		if err != nil {
-			writeErrResponse(w, ErrWrongEventId.Error(), http.StatusBadRequest)
+			writeErrResponse(w, ErrWrongEventID.Error(), http.StatusBadRequest)
 			log.Debug(err)
 			return
 		}
@@ -127,7 +130,7 @@ func editEventHandler(storage common.Storage, log *logrus.Logger) func(w http.Re
 		err = storage.EditEvent(r.Context(), id, *event)
 		if err != nil {
 			if errors.Is(err, common.ErrNoSuchEvent) {
-				log.Debug("failed to edit an event %d: %s", id, err.Error())
+				log.Debugf("failed to edit an event %d: %s", id, err.Error())
 				writeErrResponse(w, err.Error(), http.StatusNotFound)
 				return
 			}
@@ -135,14 +138,15 @@ func editEventHandler(storage common.Storage, log *logrus.Logger) func(w http.Re
 			writeErrResponse(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		writeOkResponse(w, Id{Id: id}, http.StatusOK)
+		writeOkResponse(w, ID{ID: id})
 	}
 }
 
-func writeOkResponse(w http.ResponseWriter, data interface{}, status int) {
+func writeOkResponse(w http.ResponseWriter, data interface{}) {
+	status := http.StatusOK
 	w.WriteHeader(status)
 	w.Header().Set("Content-type", "application/json")
-	response := JsonResponse{
+	response := JSONResponse{
 		Data: &data,
 		Code: status,
 	}
@@ -152,17 +156,17 @@ func writeOkResponse(w http.ResponseWriter, data interface{}, status int) {
 func writeErrResponse(w http.ResponseWriter, err string, status int) {
 	w.WriteHeader(status)
 	w.Header().Set("Content-type", "application/json")
-	response := JsonResponse{
+	response := JSONResponse{
 		Error: &err,
 		Code:  status,
 	}
 	_ = json.NewEncoder(w).Encode(response)
 }
 
-func parseIdParam(r *http.Request) (uint64, error) {
+func parseIDParam(r *http.Request) (uint64, error) {
 	idStr := chi.URLParam(r, "id")
 	if idStr == "" {
-		return 0, ErrWrongEventId
+		return 0, ErrWrongEventID
 	}
 	id, err := strconv.ParseUint(idStr, 0, 64)
 	if err != nil {

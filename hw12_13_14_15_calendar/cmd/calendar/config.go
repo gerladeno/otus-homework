@@ -10,7 +10,7 @@ import (
 type Config struct {
 	Logger  LoggerConf
 	Storage StorageConf
-	Http    HttpConf
+	HTTP    HTTPConf
 }
 
 type LoggerConf struct {
@@ -26,7 +26,7 @@ type StorageConf struct {
 	Ssl      string `json:"ssl"`
 }
 
-type HttpConf struct {
+type HTTPConf struct {
 	Port int `json:"port"`
 }
 
@@ -51,6 +51,6 @@ func defaultConfig() Config {
 	return Config{
 		Logger:  LoggerConf{"Debug", "stdout"},
 		Storage: StorageConf{Remote: false},
-		Http: HttpConf{Port: 3000},
+		HTTP:    HTTPConf{Port: 3000},
 	}
 }

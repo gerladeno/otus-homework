@@ -57,7 +57,7 @@ func main() {
 
 	calendar := app.New(log, storage)
 
-	server := internalhttp.NewServer(calendar, storage, log, version, config.Http.Port)
+	server := internalhttp.NewServer(calendar, storage, log, version, config.HTTP.Port)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
