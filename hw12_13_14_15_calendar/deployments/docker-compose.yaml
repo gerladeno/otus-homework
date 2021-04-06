@@ -1,1 +1,11 @@
-version: "3"
+version: '3'
+services:
+  postgres:
+    build: ../internal/storage/
+    container_name: postgres
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres:/var/lib/postgresql/data/
+volumes:
+  postgres:

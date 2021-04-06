@@ -12,16 +12,18 @@ var (
 	gitHash   = "UNKNOWN"
 )
 
+var version = struct {
+	Release   string
+	BuildDate string
+	GitHash   string
+}{
+	Release:   release,
+	BuildDate: buildDate,
+	GitHash:   gitHash,
+}
+
 func printVersion() {
-	if err := json.NewEncoder(os.Stdout).Encode(struct {
-		Release   string
-		BuildDate string
-		GitHash   string
-	}{
-		Release:   release,
-		BuildDate: buildDate,
-		GitHash:   gitHash,
-	}); err != nil {
+	if err := json.NewEncoder(os.Stdout).Encode(version); err != nil {
 		fmt.Printf("error while decode version info: %v\n", err)
 	}
 }

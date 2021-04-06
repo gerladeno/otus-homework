@@ -1,0 +1,13 @@
+{
+  "logger": {
+    "level": "INFO",
+    "path": "stdout"
+  },
+  "storage": {
+    "remote": true,
+    "host": "localhost",
+    "port": 5432,
+    "database": "postgres",
+    "ssl": "disable"
+  }
+}
