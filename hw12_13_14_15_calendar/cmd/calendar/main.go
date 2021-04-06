@@ -58,7 +58,7 @@ func main() {
 	calendar := app.New(log, storage)
 
 	server := internalhttp.NewServer(calendar, storage, log, version, config.HTTP.Port)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
 	go func() {
@@ -74,10 +74,7 @@ func main() {
 		signal.Stop(signals)
 		cancel()
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-		defer cancel()
-
-		if err := server.Stop(ctx); err != nil {
+		if err := server.Stop(); err != nil {
 			log.Error("failed to stop http server: " + err.Error())
 		}
 	}()

@@ -29,7 +29,7 @@ type ID struct {
 
 func listEventsHandler(storage common.Storage, log *logrus.Logger) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		events, err := storage.ListEvents()
+		events, err := storage.ListEvents(r.Context())
 		if err != nil {
 			log.Warn("failed to get list of events: ", err)
 			writeErrResponse(w, err.Error(), http.StatusInternalServerError)
@@ -47,7 +47,7 @@ func getEventHandler(storage common.Storage, log *logrus.Logger) func(w http.Res
 			log.Debug(err)
 			return
 		}
-		event, err := storage.GetEvent(id)
+		event, err := storage.ReadEvent(r.Context(), id)
 		if err != nil {
 			if errors.Is(err, common.ErrNoSuchEvent) {
 				log.Debugf("failed to get an event %d: %s", id, err.Error())
@@ -70,7 +70,7 @@ func removeEventHandler(storage common.Storage, log *logrus.Logger) func(w http.
 			log.Debug(err)
 			return
 		}
-		err = storage.RemoveEvent(r.Context(), id)
+		err = storage.DeleteEvent(r.Context(), id)
 		if err != nil {
 			if errors.Is(err, common.ErrNoSuchEvent) {
 				log.Debugf("failed to remove an event %d: %s", id, err.Error())
@@ -98,7 +98,7 @@ func addEventHandler(storage common.Storage, log *logrus.Logger) func(w http.Res
 			writeErrResponse(w, ErrUnparsableEvent.Error(), http.StatusBadRequest)
 			return
 		}
-		id, err := storage.AddEvent(r.Context(), *event)
+		id, err := storage.CreateEvent(r.Context(), *event)
 		if err != nil {
 			log.Warn("failed to add event: ", err)
 			writeErrResponse(w, err.Error(), http.StatusInternalServerError)
@@ -127,7 +127,7 @@ func editEventHandler(storage common.Storage, log *logrus.Logger) func(w http.Re
 			writeErrResponse(w, ErrUnparsableEvent.Error(), http.StatusBadRequest)
 			return
 		}
-		err = storage.EditEvent(r.Context(), id, *event)
+		err = storage.UpdateEvent(r.Context(), id, *event)
 		if err != nil {
 			if errors.Is(err, common.ErrNoSuchEvent) {
 				log.Debugf("failed to edit an event %d: %s", id, err.Error())

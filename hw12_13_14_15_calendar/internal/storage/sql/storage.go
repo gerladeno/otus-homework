@@ -2,6 +2,8 @@ package sqlstorage
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -14,9 +16,8 @@ import (
 type Storage struct {
 	db      *sqlx.DB
 	log     *logrus.Logger
-	mu      sync.RWMutex
-	events  map[uint64]common.Event
 	counter uint64
+	mu      sync.RWMutex
 }
 
 func New(log *logrus.Logger, dsn string) (*Storage, error) {
@@ -28,32 +29,44 @@ func New(log *logrus.Logger, dsn string) (*Storage, error) {
 	if err != nil {
 		return nil, err
 	}
-	var counter uint64
+	var counter sql.NullInt64
 	err = db.Get(&counter, "SELECT max(id) + 1 from events")
 	if err != nil {
 		log.Warn("can't get max id, most likely something is wrong, data loss possible. Continue with id = 0")
 	}
-	events := make(map[uint64]common.Event)
-	tmp, err := getEvents(context.Background(), log, db)
+	return &Storage{db: db, log: log, counter: uint64(counter.Int64)}, nil
+}
+
+func (s *Storage) ReadEvent(ctx context.Context, id uint64) (*common.Event, error) {
+	query := fmt.Sprintf(`SELECT * from events WHERE id = %d`, id)
+	result := make([]common.Event, 0)
+	rows, err := s.db.QueryxContext(ctx, query)
+	defer func() {
+		if err := rows.Close(); err != nil {
+			s.log.Warn("err closing rows: ", err)
+		}
+	}()
 	if err != nil {
-		log.Warn("failed to get a list of events, proceeding with empty list, probable data loss")
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, common.ErrNoSuchEvent
+		}
+		return nil, err
 	}
-	for _, event := range tmp {
-		events[event.ID] = event
+	var event common.Event
+	for rows.Next() {
+		err = rows.StructScan(&event)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, event)
 	}
-	return &Storage{db: db, log: log, events: events, counter: counter}, nil
+	if len(result) == 0 {
+		return nil, common.ErrNoSuchEvent
+	}
+	return &result[0], nil
 }
 
-func (s *Storage) GetEvent(id uint64) (*common.Event, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if elem, ok := s.events[id]; ok {
-		return &elem, nil
-	}
-	return nil, common.ErrNoSuchEvent
-}
-
-func (s *Storage) AddEvent(ctx context.Context, event common.Event) (uint64, error) {
+func (s *Storage) CreateEvent(ctx context.Context, event common.Event) (uint64, error) {
 	s.mu.RLock()
 	id := s.counter
 	s.mu.RUnlock()
@@ -69,82 +82,73 @@ INSERT INTO events (id, title, start_time, duration, invite_list, comment) VALUE
 		return 0, err
 	}
 	s.mu.Lock()
-	s.events[s.counter] = event
 	s.counter++
 	s.mu.Unlock()
 	s.log.Trace("added event ", id)
 	return id, nil
 }
 
-func (s *Storage) EditEvent(ctx context.Context, id uint64, event common.Event) error {
+func (s *Storage) UpdateEvent(ctx context.Context, id uint64, event common.Event) error {
 	event.ID = id
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	event.Created = s.events[id].Created
 	event.Updated = time.Now()
 	query := fmt.Sprintf(`
 UPDATE events SET (title, start_time, duration, invite_list, comment, created) = ('%s', '%s', %d, '%s', '%s', '%s')
 WHERE id = %d
 `, event.Title, event.StartTime.Format(common.PgTimestampFmt), int(event.Duration.Seconds()), event.InviteList, event.Comment, event.Created.Format(common.PgTimestampFmt), id)
-	_, err := s.db.ExecContext(ctx, query)
+	res, err := s.db.ExecContext(ctx, query)
 	if err != nil {
 		s.log.Warn("failed to edit event ", id)
 		return err
 	}
-	if _, ok := s.events[id]; !ok {
+	n, err := res.RowsAffected()
+	if err != nil {
+		s.log.Warn("failed to add event ", id)
+		return err
+	}
+	if n == 0 {
 		return common.ErrNoSuchEvent
 	}
-	s.events[id] = event
 	s.log.Trace("modified event ", id)
 	return nil
 }
 
-func (s *Storage) RemoveEvent(ctx context.Context, id uint64) error {
-	s.mu.RLock()
-	if _, ok := s.events[id]; !ok {
-		s.mu.RUnlock()
-		return common.ErrNoSuchEvent
-	}
-	s.mu.RUnlock()
+func (s *Storage) DeleteEvent(ctx context.Context, id uint64) error {
 	query := fmt.Sprintf(`DELETE FROM events WHERE id = %d`, id)
-	_, err := s.db.ExecContext(ctx, query)
+	res, err := s.db.ExecContext(ctx, query)
 	if err != nil {
 		s.log.Warn("failed to remove event ", id)
 		return err
 	}
-	s.mu.Lock()
-	delete(s.events, id)
-	s.mu.Unlock()
+	n, err := res.RowsAffected()
+	if err != nil {
+		s.log.Warn("failed to add event ", id)
+		return err
+	}
+	if n == 0 {
+		return common.ErrNoSuchEvent
+	}
 	s.log.Trace("removed event ", id)
 	return nil
 }
 
-func (s *Storage) ListEvents() ([]common.Event, error) {
-	events := make([]common.Event, 0)
-	s.mu.Lock()
-	for _, event := range s.events {
-		events = append(events, event)
-	}
-	s.mu.Unlock()
-	return events, nil
-}
-
-func getEvents(ctx context.Context, log *logrus.Logger, db *sqlx.DB) ([]common.Event, error) {
+func (s *Storage) ListEvents(ctx context.Context) ([]common.Event, error) {
 	query := `SELECT * from events`
 	result := make([]common.Event, 0)
-	rows, err := db.QueryxContext(ctx, query)
+	rows, err := s.db.QueryxContext(ctx, query)
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Warn("err closing rows: ", err)
+			s.log.Warn("err closing rows: ", err)
 		}
 	}()
 	if err != nil {
+		s.log.Warn("failed to get a list of events")
 		return nil, err
 	}
 	var event common.Event
 	for rows.Next() {
 		err = rows.StructScan(&event)
 		if err != nil {
+			s.log.Warn("failed to get a list of events")
 			return nil, err
 		}
 		result = append(result, event)

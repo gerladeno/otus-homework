@@ -20,6 +20,7 @@ type Server struct {
 	log     *logrus.Logger
 	router  chi.Router
 	port    string
+	server  *http.Server
 }
 
 type Application interface { // TODO
@@ -58,7 +59,7 @@ func NewServer(app Application, storage common.Storage, log *logrus.Logger, vers
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	server := &http.Server{
+	s.server = &http.Server{
 		Addr:              s.port,
 		Handler:           s.router,
 		ReadTimeout:       15 * time.Second,
@@ -66,17 +67,18 @@ func (s *Server) Start(ctx context.Context) error {
 		WriteTimeout:      15 * time.Second,
 	}
 	s.log.Infof("starting server on %s", s.port)
-	if err := server.ListenAndServe(); err != nil {
-		ctx.Done()
+	go func() {
+		<-ctx.Done()
+		_ = s.Stop()
+	}()
+	if err := s.server.ListenAndServe(); err != nil {
 		return err
 	}
-	<-ctx.Done()
 	return nil
 }
 
-func (s *Server) Stop(ctx context.Context) error {
-	ctx.Done()
-	return nil
+func (s *Server) Stop() error {
+	return s.server.Close()
 }
 
 func notFoundHandler(w http.ResponseWriter, _ *http.Request) {
