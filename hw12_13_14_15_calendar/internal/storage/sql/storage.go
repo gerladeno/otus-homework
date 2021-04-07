@@ -66,7 +66,7 @@ func (s *Storage) ReadEvent(ctx context.Context, id uint64) (*common.Event, erro
 	return &result[0], nil
 }
 
-func (s *Storage) CreateEvent(ctx context.Context, event common.Event) (uint64, error) {
+func (s *Storage) CreateEvent(ctx context.Context, event *common.Event) (uint64, error) {
 	s.mu.RLock()
 	id := s.counter
 	s.mu.RUnlock()
@@ -88,7 +88,7 @@ INSERT INTO events (id, title, start_time, duration, invite_list, comment) VALUE
 	return id, nil
 }
 
-func (s *Storage) UpdateEvent(ctx context.Context, id uint64, event common.Event) error {
+func (s *Storage) UpdateEvent(ctx context.Context, id uint64, event *common.Event) error {
 	event.ID = id
 	event.Updated = time.Now()
 	query := fmt.Sprintf(`
@@ -131,9 +131,9 @@ func (s *Storage) DeleteEvent(ctx context.Context, id uint64) error {
 	return nil
 }
 
-func (s *Storage) ListEvents(ctx context.Context) ([]common.Event, error) {
+func (s *Storage) ListEvents(ctx context.Context) ([]*common.Event, error) {
 	query := `SELECT * from events`
-	result := make([]common.Event, 0)
+	result := make([]*common.Event, 0)
 	rows, err := s.db.QueryxContext(ctx, query)
 	defer func() {
 		if err := rows.Close(); err != nil {
@@ -151,7 +151,7 @@ func (s *Storage) ListEvents(ctx context.Context) ([]common.Event, error) {
 			s.log.Warn("failed to get a list of events")
 			return nil, err
 		}
-		result = append(result, event)
+		result = append(result, &event)
 	}
 	return result, nil
 }

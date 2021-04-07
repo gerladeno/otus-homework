@@ -8,7 +8,6 @@ import (
 
 	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/storage/common"
 	"github.com/go-chi/chi"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -27,119 +26,109 @@ type ID struct {
 	ID uint64 `json:"id"`
 }
 
-func listEventsHandler(storage common.Storage, log *logrus.Logger) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		events, err := storage.ListEvents(r.Context())
-		if err != nil {
-			log.Warn("failed to get list of events: ", err)
-			writeErrResponse(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		writeOkResponse(w, events)
+func (s *Server) listEventsHandler(w http.ResponseWriter, r *http.Request) {
+	events, err := s.app.ListEvents(r.Context())
+	if err != nil {
+		s.log.Warn("failed to get list of events: ", err)
+		writeErrResponse(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+	writeOkResponse(w, events)
 }
 
-func getEventHandler(storage common.Storage, log *logrus.Logger) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := parseIDParam(r)
-		if err != nil {
-			writeErrResponse(w, ErrWrongEventID.Error(), http.StatusBadRequest)
-			log.Debug(err)
-			return
-		}
-		event, err := storage.ReadEvent(r.Context(), id)
-		if err != nil {
-			if errors.Is(err, common.ErrNoSuchEvent) {
-				log.Debugf("failed to get an event %d: %s", id, err.Error())
-				writeErrResponse(w, err.Error(), http.StatusNotFound)
-				return
-			}
-			log.Warnf("failed to get an event %d: %s", id, err.Error())
-			writeErrResponse(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		writeOkResponse(w, event)
+func (s *Server) getEventHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := parseIDParam(r)
+	if err != nil {
+		writeErrResponse(w, ErrWrongEventID.Error(), http.StatusBadRequest)
+		s.log.Debug(err)
+		return
 	}
+	event, err := s.app.ReadEvent(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, common.ErrNoSuchEvent) {
+			s.log.Debugf("failed to get an event %d: %s", id, err.Error())
+			writeErrResponse(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		s.log.Warnf("failed to get an event %d: %s", id, err.Error())
+		writeErrResponse(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeOkResponse(w, event)
 }
 
-func removeEventHandler(storage common.Storage, log *logrus.Logger) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := parseIDParam(r)
-		if err != nil {
-			writeErrResponse(w, ErrWrongEventID.Error(), http.StatusBadRequest)
-			log.Debug(err)
-			return
-		}
-		err = storage.DeleteEvent(r.Context(), id)
-		if err != nil {
-			if errors.Is(err, common.ErrNoSuchEvent) {
-				log.Debugf("failed to remove an event %d: %s", id, err.Error())
-				writeErrResponse(w, err.Error(), http.StatusNotFound)
-				return
-			}
-			log.Warnf("failed to remove an event %d: %s", id, err.Error())
-			writeErrResponse(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		writeOkResponse(w, ID{ID: id})
+func (s *Server) removeEventHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := parseIDParam(r)
+	if err != nil {
+		writeErrResponse(w, ErrWrongEventID.Error(), http.StatusBadRequest)
+		s.log.Debug(err)
+		return
 	}
+	err = s.app.DeleteEvent(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, common.ErrNoSuchEvent) {
+			s.log.Debugf("failed to remove an event %d: %s", id, err.Error())
+			writeErrResponse(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		s.log.Warnf("failed to remove an event %d: %s", id, err.Error())
+		writeErrResponse(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeOkResponse(w, ID{ID: id})
 }
 
-func addEventHandler(storage common.Storage, log *logrus.Logger) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Body == nil {
-			log.Debug("empty request body")
-			writeErrResponse(w, ErrEmptyRequestBody.Error(), http.StatusBadRequest)
-			return
-		}
-		event := new(common.Event)
-		if err := event.ParseEvent(r); err != nil {
-			log.Debug("can't parse events: ", err)
-			writeErrResponse(w, ErrUnparsableEvent.Error(), http.StatusBadRequest)
-			return
-		}
-		id, err := storage.CreateEvent(r.Context(), *event)
-		if err != nil {
-			log.Warn("failed to add event: ", err)
-			writeErrResponse(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		writeOkResponse(w, ID{ID: id})
+func (s *Server) addEventHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Body == nil {
+		s.log.Debug("empty request body")
+		writeErrResponse(w, ErrEmptyRequestBody.Error(), http.StatusBadRequest)
+		return
 	}
+	event := new(common.Event)
+	if err := event.ParseEvent(r); err != nil {
+		s.log.Debug("can't parse events: ", err)
+		writeErrResponse(w, ErrUnparsableEvent.Error(), http.StatusBadRequest)
+		return
+	}
+	id, err := s.app.CreateEvent(r.Context(), event)
+	if err != nil {
+		s.log.Warn("failed to add event: ", err)
+		writeErrResponse(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeOkResponse(w, ID{ID: id})
 }
 
-func editEventHandler(storage common.Storage, log *logrus.Logger) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := parseIDParam(r)
-		if err != nil {
-			writeErrResponse(w, ErrWrongEventID.Error(), http.StatusBadRequest)
-			log.Debug(err)
-			return
-		}
-		if r.Body == nil {
-			log.Debug("empty request body")
-			writeErrResponse(w, ErrEmptyRequestBody.Error(), http.StatusBadRequest)
-			return
-		}
-		event := new(common.Event)
-		if err := event.ParseEvent(r); err != nil {
-			log.Debug("can't parse events: ", err)
-			writeErrResponse(w, ErrUnparsableEvent.Error(), http.StatusBadRequest)
-			return
-		}
-		err = storage.UpdateEvent(r.Context(), id, *event)
-		if err != nil {
-			if errors.Is(err, common.ErrNoSuchEvent) {
-				log.Debugf("failed to edit an event %d: %s", id, err.Error())
-				writeErrResponse(w, err.Error(), http.StatusNotFound)
-				return
-			}
-			log.Warnf("failed to edit an event %d: %s", id, err.Error())
-			writeErrResponse(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		writeOkResponse(w, ID{ID: id})
+func (s *Server) editEventHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := parseIDParam(r)
+	if err != nil {
+		writeErrResponse(w, ErrWrongEventID.Error(), http.StatusBadRequest)
+		s.log.Debug(err)
+		return
 	}
+	if r.Body == nil {
+		s.log.Debug("empty request body")
+		writeErrResponse(w, ErrEmptyRequestBody.Error(), http.StatusBadRequest)
+		return
+	}
+	event := new(common.Event)
+	if err := event.ParseEvent(r); err != nil {
+		s.log.Debug("can't parse events: ", err)
+		writeErrResponse(w, ErrUnparsableEvent.Error(), http.StatusBadRequest)
+		return
+	}
+	err = s.app.UpdateEvent(r.Context(), event, id)
+	if err != nil {
+		if errors.Is(err, common.ErrNoSuchEvent) {
+			s.log.Debugf("failed to edit an event %d: %s", id, err.Error())
+			writeErrResponse(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		s.log.Warnf("failed to edit an event %d: %s", id, err.Error())
+		writeErrResponse(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeOkResponse(w, ID{ID: id})
 }
 
 func writeOkResponse(w http.ResponseWriter, data interface{}) {

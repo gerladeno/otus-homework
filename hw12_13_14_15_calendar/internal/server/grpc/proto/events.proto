@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package events;
+option go_package = "events/";
+
+message Event
+{
+  uint64 id = 1;
+  string title = 2;
+  google.protobuf.Timestamp start_time = 3;
+  uint64 duration = 4;
+  string invite_list = 5;
+  string comment = 6;
+  google.protobuf.Timestamp created = 7;
+  google.protobuf.Timestamp updated = 8;
+}

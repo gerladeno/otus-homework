@@ -18,7 +18,7 @@ func TestStorage(t *testing.T) {
 		events := New(log)
 		tt, err := time.Parse(common.PgTimestampFmt, "2020-01-01 00:00:00")
 		require.NoError(t, err)
-		id, err := events.CreateEvent(context.Background(), common.Event{
+		id, err := events.CreateEvent(context.Background(), &common.Event{
 			Title:      "First",
 			StartTime:  tt,
 			Duration:   0,
@@ -28,7 +28,7 @@ func TestStorage(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, id, uint64(0))
 
-		id, err = events.CreateEvent(context.Background(), common.Event{
+		id, err = events.CreateEvent(context.Background(), &common.Event{
 			Title:      "Second",
 			StartTime:  tt,
 			Duration:   0,
@@ -41,7 +41,7 @@ func TestStorage(t *testing.T) {
 		test, _ := events.ListEvents(context.Background())
 		require.Len(t, test, 2)
 
-		err = events.UpdateEvent(context.Background(), 0, common.Event{
+		err = events.UpdateEvent(context.Background(), 0, &common.Event{
 			Title:      "First edited",
 			StartTime:  tt,
 			Duration:   0,
@@ -64,7 +64,7 @@ func TestStorage(t *testing.T) {
 		require.Equal(t, elem.Comment, "First edited")
 		require.True(t, elem.Created.Before(elem.Updated))
 
-		id, err = events.CreateEvent(context.Background(), common.Event{})
+		id, err = events.CreateEvent(context.Background(), &common.Event{})
 		require.NoError(t, err)
 		require.Equal(t, id, uint64(2))
 	})
@@ -77,7 +77,7 @@ func TestStorage(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				_, err := events.CreateEvent(context.Background(), common.Event{})
+				_, err := events.CreateEvent(context.Background(), &common.Event{})
 				require.NoError(t, err)
 			}()
 		}

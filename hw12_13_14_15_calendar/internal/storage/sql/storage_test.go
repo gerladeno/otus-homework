@@ -14,13 +14,15 @@ import (
 
 func TestStorage(t *testing.T) {
 	// run ONLY on empty DB
+	// goose -dir internal/storage/sql/migrations postgres "user=calendar password=calendar dbname=postgres sslmode=disable" down
+	// goose -dir internal/storage/sql/migrations postgres "user=calendar password=calendar dbname=postgres sslmode=disable" up
 	t.Skip()
 	log := logrus.New()
 	events, err := New(log, "host=localhost port=5432 user=calendar password=calendar dbname=postgres sslmode=disable")
 	require.NoError(t, err)
 	tt, err := time.Parse(common.PgTimestampFmt, "2020-01-01 00:00:00")
 	require.NoError(t, err)
-	id, err := events.CreateEvent(context.Background(), common.Event{
+	id, err := events.CreateEvent(context.Background(), &common.Event{
 		Title:      "First",
 		StartTime:  tt,
 		Duration:   0,
@@ -30,7 +32,7 @@ func TestStorage(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, id, uint64(0))
 
-	id, err = events.CreateEvent(context.Background(), common.Event{
+	id, err = events.CreateEvent(context.Background(), &common.Event{
 		Title:      "Second",
 		StartTime:  tt,
 		Duration:   0,
@@ -44,7 +46,7 @@ func TestStorage(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, test, 2)
 
-	err = events.UpdateEvent(context.Background(), 0, common.Event{
+	err = events.UpdateEvent(context.Background(), 0, &common.Event{
 		Title:      "First edited",
 		StartTime:  tt,
 		Duration:   0,
@@ -69,7 +71,7 @@ func TestStorage(t *testing.T) {
 	require.Equal(t, elem.Comment, "First edited")
 	require.True(t, elem.Created.Before(elem.Updated))
 
-	id, err = events.CreateEvent(context.Background(), common.Event{})
+	id, err = events.CreateEvent(context.Background(), &common.Event{})
 	require.NoError(t, err)
 	require.Equal(t, id, uint64(2))
 }

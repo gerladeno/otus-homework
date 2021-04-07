@@ -11,13 +11,13 @@ import (
 
 type Storage struct {
 	mu      sync.Mutex
-	events  map[uint64]common.Event
+	events  map[uint64]*common.Event
 	counter uint64
 	log     *logrus.Logger
 }
 
 func New(log *logrus.Logger) *Storage {
-	events := make(map[uint64]common.Event)
+	events := make(map[uint64]*common.Event)
 	return &Storage{events: events, log: log}
 }
 
@@ -25,12 +25,12 @@ func (s *Storage) ReadEvent(_ context.Context, id uint64) (*common.Event, error)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if elem, ok := s.events[id]; ok {
-		return &elem, nil
+		return elem, nil
 	}
 	return nil, common.ErrNoSuchEvent
 }
 
-func (s *Storage) CreateEvent(_ context.Context, event common.Event) (uint64, error) {
+func (s *Storage) CreateEvent(_ context.Context, event *common.Event) (uint64, error) {
 	event.Created = time.Now()
 	event.Updated = time.Now()
 	var id uint64
@@ -46,7 +46,7 @@ func (s *Storage) CreateEvent(_ context.Context, event common.Event) (uint64, er
 	return id, nil
 }
 
-func (s *Storage) UpdateEvent(_ context.Context, id uint64, event common.Event) error {
+func (s *Storage) UpdateEvent(_ context.Context, id uint64, event *common.Event) error {
 	event.ID = id
 	s.mu.Lock()
 	{
@@ -75,8 +75,8 @@ func (s *Storage) DeleteEvent(_ context.Context, id uint64) error {
 	return nil
 }
 
-func (s *Storage) ListEvents(_ context.Context) ([]common.Event, error) {
-	events := make([]common.Event, 0)
+func (s *Storage) ListEvents(_ context.Context) ([]*common.Event, error) {
+	events := make([]*common.Event, 0)
 	s.mu.Lock()
 	for _, event := range s.events {
 		events = append(events, event)

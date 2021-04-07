@@ -16,17 +16,26 @@ import (
 
 type Server struct {
 	app     Application
-	storage common.Storage
 	log     *logrus.Logger
 	router  chi.Router
 	port    string
 	server  *http.Server
 }
 
-type Application interface { // TODO
+type Application interface {
+	CreateEvent(ctx context.Context, event *common.Event) (id uint64, err error)
+	ReadEvent(ctx context.Context, id uint64) (event *common.Event, err error)
+	UpdateEvent(ctx context.Context, event *common.Event, id uint64) (err error)
+	DeleteEvent(ctx context.Context, id uint64) (err error)
+	ListEvents(ctx context.Context) (events []*common.Event, err error)
 }
 
-func NewServer(app Application, storage common.Storage, log *logrus.Logger, version interface{}, port int) *Server {
+func NewServer(app Application, log *logrus.Logger, version interface{}, port int) *Server {
+	server := Server{
+		app:     app,
+		log:     log,
+		port:    ":" + strconv.Itoa(port),
+	}
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
 	r.Use(cors.AllowAll().Handler)
@@ -41,21 +50,16 @@ func NewServer(app Application, storage common.Storage, log *logrus.Logger, vers
 		r.Group(func(r chi.Router) {
 			r.Use(loggingMiddleware(log))
 			r.Route("/v1", func(r chi.Router) {
-				r.Get("/listEvents", listEventsHandler(storage, log))
-				r.Get("/getEvent/{id}", getEventHandler(storage, log))
-				r.Get("/removeEvent/{id}", removeEventHandler(storage, log))
-				r.Post("/addEvent", addEventHandler(storage, log))
-				r.Post("/editEvent/{id}", editEventHandler(storage, log))
+				r.Get("/listEvents", server.listEventsHandler)
+				r.Get("/getEvent/{id}", server.getEventHandler)
+				r.Get("/removeEvent/{id}", server.removeEventHandler)
+				r.Post("/addEvent", server.addEventHandler)
+				r.Post("/editEvent/{id}", server.editEventHandler)
 			})
 		})
 	})
-	return &Server{
-		app:     app,
-		storage: storage,
-		log:     log,
-		router:  r,
-		port:    ":" + strconv.Itoa(port),
-	}
+	server.router = r
+	return &server
 }
 
 func (s *Server) Start(ctx context.Context) error {
