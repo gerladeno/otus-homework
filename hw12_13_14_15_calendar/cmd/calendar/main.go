@@ -53,8 +53,9 @@ func main() {
 	}
 
 	calendar := app.New(log, storage)
-
-	httpServer := internalhttp.NewServer(calendar, log, version, config.HTTP.Port)
+	handler := internalhttp.NewEventHandler(calendar, log)
+	router := internalhttp.NewRouter(handler, log, version)
+	httpServer := internalhttp.NewServer(router, config.HTTP.Port)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -76,8 +77,7 @@ func main() {
 		}
 	}()
 
-	log.Info("calendar is running...")
-
+	log.Infof("starting server on %d", config.HTTP.Port)
 	if err := httpServer.Start(ctx); err != nil {
 		log.Error("failed to start http server: " + err.Error())
 		cancel()

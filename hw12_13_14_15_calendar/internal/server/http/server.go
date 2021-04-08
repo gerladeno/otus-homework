@@ -16,11 +16,9 @@ import (
 )
 
 type Server struct {
-	app     Application
-	log     *logrus.Logger
-	router  chi.Router
-	port    string
-	server  *http.Server
+	router chi.Router
+	port   string
+	server *http.Server
 }
 
 type Application interface {
@@ -31,12 +29,16 @@ type Application interface {
 	ListEvents(ctx context.Context) (events []*common.Event, err error)
 }
 
-func NewServer(app Application, log *logrus.Logger, version interface{}, port int) *Server {
-	server := Server{
-		app:     app,
-		log:     log,
-		port:    ":" + strconv.Itoa(port),
-	}
+type EventHandler struct {
+	app Application
+	log *logrus.Logger
+}
+
+func NewEventHandler(app Application, log *logrus.Logger) *EventHandler {
+	return &EventHandler{app: app, log: log}
+}
+
+func NewRouter(handler *EventHandler, log *logrus.Logger, version interface{}) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
 	r.Use(cors.AllowAll().Handler)
@@ -51,15 +53,22 @@ func NewServer(app Application, log *logrus.Logger, version interface{}, port in
 		r.Group(func(r chi.Router) {
 			r.Use(loggingMiddleware(log))
 			r.Route("/v1", func(r chi.Router) {
-				r.Get("/listEvents", server.listEventsHandler)
-				r.Get("/getEvent/{id}", server.getEventHandler)
-				r.Get("/deleteEvent/{id}", server.deleteEventHandler)
-				r.Post("/addEvent", server.addEventHandler)
-				r.Post("/editEvent/{id}", server.editEventHandler)
+				r.Get("/listEvents", handler.listEventsHandler)
+				r.Get("/getEvent/{id}", handler.getEventHandler)
+				r.Get("/deleteEvent/{id}", handler.deleteEventHandler)
+				r.Post("/addEvent", handler.addEventHandler)
+				r.Post("/editEvent/{id}", handler.editEventHandler)
 			})
 		})
 	})
-	server.router = r
+	return r
+}
+
+func NewServer(router *chi.Mux, port int) *Server {
+	server := Server{
+		router: router,
+		port:   ":" + strconv.Itoa(port),
+	}
 	return &server
 }
 
@@ -71,7 +80,6 @@ func (s *Server) Start(ctx context.Context) error {
 		ReadHeaderTimeout: 5 * time.Second,
 		WriteTimeout:      15 * time.Second,
 	}
-	s.log.Infof("starting server on %s", s.port)
 	go func() {
 		<-ctx.Done()
 		_ = s.Stop()
