@@ -2,6 +2,8 @@ package internalhttp
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -58,16 +60,48 @@ func (t TestApp) ListEvents(_ context.Context) ([]*common.Event, error) {
 	return make([]*common.Event, 5), nil
 }
 
-func TestHandlers(t *testing.T) {
+func TestListHandler(t *testing.T) {
 	ts := NewServer(TestApp{}, logrus.New(), "test_version", 3001)
+	w := httptest.NewRecorder()
+	var result JSONResponse
+
 	t.Run("listEntries", func(t *testing.T) {
-		req, err := http.NewRequestWithContext(context.Background(), "GET", "/api/v1/listEvents", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		rr := httptest.NewRecorder()
-		handler := http.HandlerFunc(ts.listEventsHandler)
-		handler.ServeHTTP(rr, req)
-		require.Equal(t, rr.Code, http.StatusOK)
+		r := httptest.NewRequest("GET", "/api/v1/listEvents", nil)
+		ts.listEventsHandler(w, r)
+		require.Equal(t, w.Code, http.StatusOK)
+		err := json.NewDecoder(w.Body).Decode(&result)
+		require.NoError(t, err)
+		require.Equal(t, len((*result.Data).([]interface{})), 5)
 	})
 }
+
+func TestDeleteHandler(t *testing.T) {
+	ts := NewServer(TestApp{}, logrus.New(), "test_version", 3001)
+	w := httptest.NewRecorder()
+	var result JSONResponse
+
+	testsDelete := []struct {
+		name    string
+		id      int
+		errCode int
+		err     string
+	}{
+		//{"invalid id",-1, http.StatusBadRequest, "invalid or empty id"},
+		{"no such entry", 0, http.StatusNotFound, ""},
+		//{"internal error",1, http.StatusInternalServerError},
+		//{"ok",2, http.StatusOK},
+	}
+	for _, test := range testsDelete {
+		test := test
+		t.Run("deleteEntry", func(t *testing.T) {
+			r := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/deleteEvent/%d", test.id), nil)
+			ts.deleteEventHandler(w, r)
+			require.Equal(t, w.Code, test.errCode)
+			err := json.NewDecoder(w.Body).Decode(&result)
+			require.NoError(t, err)
+			require.Equal(t, *result.Error, test.err)
+		})
+	}
+}
+
+//body := bytes.NewReader([]byte(fmt.Sprintf(`{"id":%d}`, test.id)))

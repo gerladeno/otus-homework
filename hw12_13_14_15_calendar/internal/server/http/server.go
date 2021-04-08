@@ -3,6 +3,7 @@ package internalhttp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -52,7 +53,7 @@ func NewServer(app Application, log *logrus.Logger, version interface{}, port in
 			r.Route("/v1", func(r chi.Router) {
 				r.Get("/listEvents", server.listEventsHandler)
 				r.Get("/getEvent/{id}", server.getEventHandler)
-				r.Get("/removeEvent/{id}", server.removeEventHandler)
+				r.Get("/deleteEvent/{id}", server.deleteEventHandler)
 				r.Post("/addEvent", server.addEventHandler)
 				r.Post("/editEvent/{id}", server.editEventHandler)
 			})
@@ -75,7 +76,7 @@ func (s *Server) Start(ctx context.Context) error {
 		<-ctx.Done()
 		_ = s.Stop()
 	}()
-	if err := s.server.ListenAndServe(); err != nil {
+	if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 	return nil

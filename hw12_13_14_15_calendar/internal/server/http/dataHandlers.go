@@ -57,7 +57,7 @@ func (s *Server) getEventHandler(w http.ResponseWriter, r *http.Request) {
 	writeOkResponse(w, event)
 }
 
-func (s *Server) removeEventHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) deleteEventHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := parseIDParam(r)
 	if err != nil {
 		writeErrResponse(w, ErrWrongEventID.Error(), http.StatusBadRequest)

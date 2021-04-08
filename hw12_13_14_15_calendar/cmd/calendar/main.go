@@ -4,17 +4,15 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-
 	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/app"
 	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/logger"
 	internalhttp "github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/server/http"
 	memorystorage "github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/storage/memory"
 	sqlstorage "github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/storage/sql"
 	_ "github.com/jackc/pgx/v4/stdlib"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 var configFile string
@@ -57,7 +55,7 @@ func main() {
 	calendar := app.New(log, storage)
 
 	httpServer := internalhttp.NewServer(calendar, log, version, config.HTTP.Port)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	go func() {
