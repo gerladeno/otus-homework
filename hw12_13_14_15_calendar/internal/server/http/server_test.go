@@ -2,69 +2,20 @@ package internalhttp
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/storage/common"
+	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/common"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
 
-type TestApp struct{}
-
-func (t TestApp) ReadEvent(_ context.Context, id uint64) (event *common.Event, err error) {
-	switch id {
-	case 0:
-		err = common.ErrNoSuchEvent
-	case 1:
-		err = io.ErrShortBuffer
-	default:
-		event = &common.Event{}
-	}
-	return event, err
-}
-
-func (t TestApp) CreateEvent(_ context.Context, event *common.Event) (uint64, error) {
-	if event.ID == 0 {
-		return 1, nil
-	}
-	return 0, io.ErrShortBuffer
-}
-
-func (t TestApp) UpdateEvent(_ context.Context, _ *common.Event, id uint64) (err error) {
-	switch id {
-	case 0:
-		err = common.ErrNoSuchEvent
-	case 1:
-		err = io.ErrShortBuffer
-	default:
-	}
-	return err
-}
-
-func (t TestApp) DeleteEvent(_ context.Context, id uint64) (err error) {
-	switch id {
-	case 0:
-		err = common.ErrNoSuchEvent
-	case 1:
-		err = io.ErrShortBuffer
-	default:
-	}
-	return err
-}
-
-func (t TestApp) ListEvents(_ context.Context) ([]*common.Event, error) {
-	return make([]*common.Event, 5), nil
-}
-
 func TestListHandler(t *testing.T) {
 	log := logrus.New()
-	th := NewEventHandler(TestApp{}, log)
+	th := NewEventHandler(common.TestApp{}, log)
 	tr := NewRouter(th, log, "test")
 	var result JSONResponse
 
@@ -81,7 +32,7 @@ func TestListHandler(t *testing.T) {
 
 func TestDeleteHandler(t *testing.T) {
 	log := logrus.New()
-	th := NewEventHandler(TestApp{}, log)
+	th := NewEventHandler(common.TestApp{}, log)
 	tr := NewRouter(th, log, "test")
 	var result JSONResponse
 
@@ -117,7 +68,7 @@ func TestDeleteHandler(t *testing.T) {
 
 func TestReadEvent(t *testing.T) {
 	log := logrus.New()
-	th := NewEventHandler(TestApp{}, log)
+	th := NewEventHandler(common.TestApp{}, log)
 	tr := NewRouter(th, log, "test")
 	var result struct {
 		Data  *common.Event `json:"data,omitempty"`
@@ -160,11 +111,11 @@ func TestReadEvent(t *testing.T) {
 
 func TestCreateEvent(t *testing.T) {
 	log := logrus.New()
-	th := NewEventHandler(TestApp{}, log)
+	th := NewEventHandler(common.TestApp{}, log)
 	tr := NewRouter(th, log, "test")
 	var result struct {
 		Data struct {
-			Id int `json:"id"`
+			ID int `json:"id"`
 		} `json:"data,omitempty"`
 		Error *string `json:"error,omitempty"`
 		Code  int     `json:"code"`
@@ -177,7 +128,7 @@ func TestCreateEvent(t *testing.T) {
 		require.Equal(t, w.Code, http.StatusOK)
 		err := json.NewDecoder(w.Body).Decode(&result)
 		require.NoError(t, err)
-		require.Equal(t, result.Data.Id, 1)
+		require.Equal(t, result.Data.ID, 1)
 	})
 	t.Run("error", func(t *testing.T) {
 		w := httptest.NewRecorder()
@@ -190,11 +141,11 @@ func TestCreateEvent(t *testing.T) {
 
 func TestUpdateEvent(t *testing.T) {
 	log := logrus.New()
-	th := NewEventHandler(TestApp{}, log)
+	th := NewEventHandler(common.TestApp{}, log)
 	tr := NewRouter(th, log, "test")
 	var result struct {
 		Data *struct {
-			Id int `json:"id"`
+			ID int `json:"id"`
 		} `json:"data,omitempty"`
 		Error *string `json:"error,omitempty"`
 		Code  int     `json:"code"`
@@ -231,8 +182,6 @@ func TestUpdateEvent(t *testing.T) {
 		require.Equal(t, w.Code, http.StatusOK)
 		err := json.NewDecoder(w.Body).Decode(&result)
 		require.NoError(t, err)
-		require.Equal(t, result.Data.Id, 2)
+		require.Equal(t, result.Data.ID, 2)
 	})
 }
-
-//body := bytes.NewReader([]byte(fmt.Sprintf(`{"id":%d}`, test.id)))

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/storage/common"
+	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/common"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/cors"
@@ -21,20 +21,12 @@ type Server struct {
 	server *http.Server
 }
 
-type Application interface {
-	CreateEvent(ctx context.Context, event *common.Event) (id uint64, err error)
-	ReadEvent(ctx context.Context, id uint64) (event *common.Event, err error)
-	UpdateEvent(ctx context.Context, event *common.Event, id uint64) (err error)
-	DeleteEvent(ctx context.Context, id uint64) (err error)
-	ListEvents(ctx context.Context) (events []*common.Event, err error)
-}
-
 type EventHandler struct {
-	app Application
+	app common.Application
 	log *logrus.Logger
 }
 
-func NewEventHandler(app Application, log *logrus.Logger) *EventHandler {
+func NewEventHandler(app common.Application, log *logrus.Logger) *EventHandler {
 	return &EventHandler{app: app, log: log}
 }
 
@@ -64,9 +56,9 @@ func NewRouter(handler *EventHandler, log *logrus.Logger, version interface{}) *
 	return r
 }
 
-func NewServer(router *chi.Mux, port int) *Server {
+func NewServer(r chi.Router, port int) *Server {
 	server := Server{
-		router: router,
+		router: r,
 		port:   ":" + strconv.Itoa(port),
 	}
 	return &server

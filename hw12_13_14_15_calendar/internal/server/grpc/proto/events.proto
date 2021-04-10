@@ -1,16 +1,34 @@
 syntax = "proto3";
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
 
-package events;
-option go_package = "events/";
+package eventspb;
+option go_package = "./eventspb";
+
+service EventsHandler {
+  rpc ListEvents (google.protobuf.Empty) returns (Events);
+  rpc CreateEvent (Event) returns (Id);
+  rpc UpdateEvent (Event) returns (google.protobuf.Empty);
+  rpc DeleteEvent (Id) returns (google.protobuf.Empty);
+  rpc ReadEvent(Id) returns (Event);
+}
+
+message Events {
+  repeated Event events = 1;
+}
+
+message Id {
+  uint64 id = 1;
+}
 
 message Event
 {
   uint64 id = 1;
   string title = 2;
   google.protobuf.Timestamp start_time = 3;
-  uint64 duration = 4;
+  google.protobuf.Duration duration = 4;
   string invite_list = 5;
   string comment = 6;
   google.protobuf.Timestamp created = 7;

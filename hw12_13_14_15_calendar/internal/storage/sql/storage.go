@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/storage/common"
+	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/common"
 	"github.com/jmoiron/sqlx"
 	"github.com/sirupsen/logrus"
 )

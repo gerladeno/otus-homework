@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/storage/common"
+	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/common"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
