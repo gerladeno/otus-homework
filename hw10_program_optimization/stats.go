@@ -27,30 +27,32 @@ func GetDomainStat(r io.Reader, domain string) (DomainStat, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get users error: %w", err)
 	}
-	return *dict, nil
+	return dict, nil
 }
 
-func countDomains(r io.Reader, domain string) (*DomainStat, error) {
+func countDomains(r io.Reader, domain string) (DomainStat, error) {
 	dict := make(DomainStat)
 	reader := bufio.NewReader(r)
-	var fullDomain string
-	var user User
-	var line []byte
-	var err error
+	var (
+		fullDomain string
+		user       User
+		line       []byte
+		err        error
+	)
 	for {
 		line, _, err = reader.ReadLine()
-		if err != nil && !errors.Is(err, io.EOF) {
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
 			return nil, err
 		}
 		user = User{}
 		user.UnmarshalEasyJSON(&jlexer.Lexer{Data: line})
-		if strings.HasSuffix(user.Email, domain) {
+		if strings.HasSuffix(user.Email, domain) && strings.Contains(user.Email, "@") {
 			fullDomain = strings.ToLower(strings.Split(user.Email, "@")[1])
 			dict[fullDomain]++
 		}
-		if errors.Is(err, io.EOF) {
-			break
-		}
 	}
-	return &dict, nil
+	return dict, nil
 }
