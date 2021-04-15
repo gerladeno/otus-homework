@@ -10,6 +10,8 @@ import (
 type Config struct {
 	Logger  LoggerConf
 	Storage StorageConf
+	HTTP    HTTPConf
+	GRPC    GRPCConf
 }
 
 type LoggerConf struct {
@@ -23,6 +25,14 @@ type StorageConf struct {
 	Port     int    `json:"port"`
 	Database string `json:"database"`
 	Ssl      string `json:"ssl"`
+}
+
+type HTTPConf struct {
+	Port int `json:"port"`
+}
+
+type GRPCConf struct {
+	Port int `json:"port"`
 }
 
 func NewConfig(path string) Config {
@@ -46,5 +56,7 @@ func defaultConfig() Config {
 	return Config{
 		Logger:  LoggerConf{"Debug", "stdout"},
 		Storage: StorageConf{Remote: false},
+		HTTP:    HTTPConf{Port: 3000},
+		GRPC:    GRPCConf{Port: 3005},
 	}
 }

@@ -24,6 +24,7 @@ func New(levelStr, path string) *logrus.Logger {
 		}
 	}
 
+	log.SetLevel(logrus.DebugLevel)
 	level, err := logrus.ParseLevel(levelStr)
 	if err != nil {
 		log.Warn("failed to parse loglevel, using warn")

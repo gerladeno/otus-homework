@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/storage/common"
+	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/common"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -14,13 +14,15 @@ import (
 
 func TestStorage(t *testing.T) {
 	// run ONLY on empty DB
+	// goose -dir internal/storage/sql/migrations postgres "user=calendar password=calendar dbname=postgres sslmode=disable" down
+	// goose -dir internal/storage/sql/migrations postgres "user=calendar password=calendar dbname=postgres sslmode=disable" up
 	t.Skip()
 	log := logrus.New()
 	events, err := New(log, "host=localhost port=5432 user=calendar password=calendar dbname=postgres sslmode=disable")
 	require.NoError(t, err)
-	tt, err := time.Parse(common.PgTimeStampFmt, "2020-01-01 00:00:00")
+	tt, err := time.Parse(common.PgTimestampFmt, "2020-01-01 00:00:00")
 	require.NoError(t, err)
-	id, err := events.AddEvent(context.Background(), common.Event{
+	id, err := events.CreateEvent(context.Background(), &common.Event{
 		Title:      "First",
 		StartTime:  tt,
 		Duration:   0,
@@ -30,7 +32,7 @@ func TestStorage(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, id, uint64(0))
 
-	id, err = events.AddEvent(context.Background(), common.Event{
+	id, err = events.CreateEvent(context.Background(), &common.Event{
 		Title:      "Second",
 		StartTime:  tt,
 		Duration:   0,
@@ -40,10 +42,11 @@ func TestStorage(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, id, uint64(1))
 
-	test, _ := events.ListEvents()
+	test, err := events.ListEvents(context.Background())
+	require.NoError(t, err)
 	require.Len(t, test, 2)
 
-	err = events.EditEvent(context.Background(), 0, common.Event{
+	err = events.UpdateEvent(context.Background(), 0, &common.Event{
 		Title:      "First edited",
 		StartTime:  tt,
 		Duration:   0,
@@ -52,13 +55,15 @@ func TestStorage(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = events.RemoveEvent(context.Background(), 1)
+	err = events.DeleteEvent(context.Background(), 1)
 	require.NoError(t, err)
 
-	require.Len(t, events.events, 1)
-	elem, err := events.GetEvent(1)
+	test, err = events.ListEvents(context.Background())
+	require.NoError(t, err)
+	require.Len(t, test, 1)
+	elem, err := events.ReadEvent(context.Background(), 1)
 	require.True(t, errors.Is(err, common.ErrNoSuchEvent))
-	elem, err = events.GetEvent(0)
+	elem, err = events.ReadEvent(context.Background(), 0)
 	require.NoError(t, err)
 	require.Equal(t, elem.Title, "First edited")
 	require.Equal(t, elem.StartTime, tt)
@@ -66,7 +71,7 @@ func TestStorage(t *testing.T) {
 	require.Equal(t, elem.Comment, "First edited")
 	require.True(t, elem.Created.Before(elem.Updated))
 
-	id, err = events.AddEvent(context.Background(), common.Event{})
+	id, err = events.CreateEvent(context.Background(), &common.Event{})
 	require.NoError(t, err)
 	require.Equal(t, id, uint64(2))
 }
