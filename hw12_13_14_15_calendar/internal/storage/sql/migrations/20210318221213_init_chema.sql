@@ -6,8 +6,9 @@ CREATE table events
     title       text,
     start_time  timestamp,
     duration    integer,
-    invite_list text,
-    comment     text,
+    description text,
+    owner       integer,
+    notify_time integer,
     created     timestamp default now(),
     updated     timestamp default now()
 );

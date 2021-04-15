@@ -1,11 +1,17 @@
 version: '3'
 services:
-  postgres:
+  postgres-calendar:
     build: ../internal/storage/
-    container_name: postgres
+    container_name: postgres-calendar
     ports:
       - 5432:5432
     volumes:
       - postgres:/var/lib/postgresql/data/
+  rabbit-calendar:
+    image: rabbitmq:3-management
+    container_name: rabbit-calendar
+    ports:
+      - 15672:15672
+      - 5672:5672
 volumes:
   postgres:

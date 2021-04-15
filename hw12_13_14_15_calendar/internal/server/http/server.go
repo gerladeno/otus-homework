@@ -18,6 +18,7 @@ import (
 type Server struct {
 	router chi.Router
 	port   string
+	log    *logrus.Logger
 	server *http.Server
 }
 
@@ -45,8 +46,9 @@ func NewRouter(handler *EventHandler, log *logrus.Logger, version interface{}) *
 		r.Group(func(r chi.Router) {
 			r.Use(loggingMiddleware(log))
 			r.Route("/v1", func(r chi.Router) {
-				r.Get("/listEvents", handler.listEventsHandler)
-				r.Get("/getEvent/{id}", handler.getEventHandler)
+				r.Get("/listEventsByDay", handler.listEventsByDayHandler)
+				r.Get("/listEventsByWeek", handler.listEventsByWeekHandler)
+				r.Get("/listEventsByMonth", handler.listEventsByMonthHandler)
 				r.Get("/deleteEvent/{id}", handler.deleteEventHandler)
 				r.Post("/addEvent", handler.addEventHandler)
 				r.Post("/editEvent/{id}", handler.editEventHandler)
@@ -56,10 +58,11 @@ func NewRouter(handler *EventHandler, log *logrus.Logger, version interface{}) *
 	return r
 }
 
-func NewServer(r chi.Router, port int) *Server {
+func NewServer(log *logrus.Logger, r chi.Router, port int) *Server {
 	server := Server{
 		router: r,
 		port:   ":" + strconv.Itoa(port),
+		log:    log,
 	}
 	return &server
 }
@@ -74,7 +77,9 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 	go func() {
 		<-ctx.Done()
-		_ = s.Stop()
+		if err := s.Stop(); err != nil {
+			s.log.Warnf("failed to stop http server: \" + err.Error()")
+		}
 	}()
 	if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err

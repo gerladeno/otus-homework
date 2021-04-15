@@ -1,9 +1,0 @@
-[logger]
-level = "INFO"
-path = "stdout"
-[storage]
-remote = true
-host = "localhost"
-port = "5432"
-db = "postgres"
-ssl = "disable"
