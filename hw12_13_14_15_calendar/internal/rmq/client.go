@@ -17,7 +17,7 @@ type Client struct {
 
 const retry = 5
 
-func GetRMQConnectionAndDeclare(log *logrus.Logger, dsn string) (*Client, error) {
+func GetRMQConnectionAndDeclare(log *logrus.Logger, dsn string, ttl int64) (*Client, error) {
 	conn, err := amqp.Dial(dsn)
 	if err != nil {
 		return nil, err
@@ -26,7 +26,11 @@ func GetRMQConnectionAndDeclare(log *logrus.Logger, dsn string) (*Client, error)
 	if err != nil {
 		return nil, err
 	}
-	topic, err := ch.QueueDeclare("notifications", false, false, false, false, nil)
+	var args amqp.Table
+	if ttl != 0 {
+		args = amqp.Table{"x-message-ttl": ttl}
+	}
+	topic, err := ch.QueueDeclare("notifications", false, false, false, false, args)
 	if err != nil {
 		return nil, err
 	}

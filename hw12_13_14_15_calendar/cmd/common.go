@@ -24,6 +24,7 @@ type StorageConf struct {
 }
 
 type RabbitConf struct {
+	Ttl int64  `json:"ttl"`
 	Dsn string `json:"dsn"`
 }
 

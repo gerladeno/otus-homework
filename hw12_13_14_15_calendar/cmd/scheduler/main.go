@@ -25,7 +25,7 @@ func main() {
 	config := NewConfig(configFile)
 	log := logger.New(config.Logger.Level, config.Logger.Path)
 
-	rabbit, err := rmq.GetRMQConnectionAndDeclare(log, config.Rabbit.Dsn)
+	rabbit, err := rmq.GetRMQConnectionAndDeclare(log, config.Rabbit.Dsn, config.Rabbit.Ttl)
 	if err != nil {
 		log.Fatalf("failed to connect to rmq and declare topic: %s", err)
 	}

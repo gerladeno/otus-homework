@@ -14,6 +14,7 @@
     "path": "stdout"
   },
   "rabbit": {
+    "ttl": 31536000000,
     "dsn": "amqp://guest:guest@localhost:5672/"
   }
 }
