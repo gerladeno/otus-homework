@@ -1,6 +1,4 @@
--- +goose Up
--- +goose StatementBegin
-CREATE TABLE events
+CREATE TABLE IF NOT EXISTS events
 (
     id          serial primary key,
     title       text,
@@ -12,9 +10,3 @@ CREATE TABLE events
     created     timestamp default now(),
     updated     timestamp default now()
 );
--- +goose StatementEnd
-
--- +goose Down
--- +goose StatementBegin
-DROP table events;
--- +goose StatementEnd

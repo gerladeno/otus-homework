@@ -19,7 +19,7 @@ import (
 var configFile string
 
 func init() {
-	flag.StringVar(&configFile, "config", "/etc/calendar/config.json", "Path to configuration file")
+	flag.StringVar(&configFile, "config", "/etc/calendar/calendar_config.json", "Path to configuration file")
 }
 
 func main() {

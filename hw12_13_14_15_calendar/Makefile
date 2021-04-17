@@ -31,14 +31,14 @@ run_scheduler: build_scheduler
 run_sender: build_sender
 	./cmd/sender --config ./configs/sender_config.json
 
-build-img:
-	docker build \
-		--build-arg=LDFLAGS="$(LDFLAGS)" \
-		-t $(DOCKER_IMG) \
-		-f build/Dockerfile .
+build_images:
+	docker-compose -f deployments/docker-compose.yaml build
 
-run-img: build-img
-	docker run $(DOCKER_IMG)
+up:
+	PG_USER=calendar PG_PASSWORD=calendar docker-compose -f deployments/docker-compose.yaml up
+
+down:
+	docker-compose -f deployments/docker-compose.yaml down
 
 version: build_calendar
 	$(BIN) version

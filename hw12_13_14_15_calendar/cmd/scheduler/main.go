@@ -17,7 +17,7 @@ import (
 var configFile string
 
 func init() {
-	flag.StringVar(&configFile, "config", "/etc/calendar/config.json", "Path to configuration file")
+	flag.StringVar(&configFile, "config", "/etc/calendar/scheduler_config.json", "Path to configuration file")
 }
 
 func main() {
@@ -25,6 +25,9 @@ func main() {
 	config := NewConfig(configFile)
 	log := logger.New(config.Logger.Level, config.Logger.Path)
 
+	if rabbitDsn := os.Getenv("RABBIT_DSN"); rabbitDsn != "" {
+		config.Rabbit.Dsn = rabbitDsn
+	}
 	rabbit, err := rmq.GetRMQConnectionAndDeclare(log, config.Rabbit.Dsn, config.Rabbit.TTL)
 	if err != nil {
 		log.Fatalf("failed to connect to rmq and declare topic: %s", err)

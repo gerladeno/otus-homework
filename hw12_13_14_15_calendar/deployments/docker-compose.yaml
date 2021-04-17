@@ -1,17 +1,77 @@
-version: '3'
+version: '3.9'
+
 services:
-  postgres-calendar:
-    build: ../internal/storage/
-    container_name: postgres-calendar
+  calendar-postgres:
+    image: library/postgres:latest
+    container_name: calendar-postgres
+    environment:
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: postgres
+    networks:
+      - calendar
     ports:
       - 5432:5432
     volumes:
-      - postgres:/var/lib/postgresql/data/
-  rabbit-calendar:
+    - ./ddl:/docker-entrypoint-initdb.d
+  calendar-rabbit:
     image: rabbitmq:3-management
-    container_name: rabbit-calendar
+    container_name: calendar-rabbit
+    networks:
+      - calendar
     ports:
       - 15672:15672
       - 5672:5672
-volumes:
-  postgres:
+  calendar-calendar:
+    build:
+      context: ..
+      dockerfile: ./build/calendar/Dockerfile
+    container_name: calendar-calendar
+    environment:
+      PG_HOST: calendar-postgres
+      PG_USER: ${PG_USER}
+      PG_PASSWORD: ${PG_PASSWORD}
+    networks:
+      - calendar
+    ports:
+      - 8888:3000
+      - 3005:3005
+    volumes:
+      - ../configs:/etc/calendar
+    restart: on-failure
+    depends_on:
+      - calendar-postgres
+  calendar-scheduler:
+    build:
+      context: ..
+      dockerfile: ./build/scheduler/Dockerfile
+    container_name: calendar-scheduler
+    environment:
+      PG_HOST: calendar-postgres
+      PG_USER: ${PG_USER}
+      PG_PASSWORD: ${PG_PASSWORD}
+      RABBIT_DSN: amqp://guest:guest@calendar-rabbit:5672/
+    networks:
+      - calendar
+    volumes:
+      - ../configs:/etc/calendar
+    restart: on-failure
+    depends_on:
+      - calendar-postgres
+      - calendar-rabbit
+  calendar-sender:
+    build:
+      context: ..
+      dockerfile: ./build/sender/Dockerfile
+    container_name: calendar-sender
+    environment:
+      RABBIT_DSN: amqp://guest:guest@calendar-rabbit:5672/
+    networks:
+      - calendar
+    volumes:
+      - ../configs:/etc/calendar
+    restart: on-failure
+    depends_on:
+      - calendar-rabbit
+networks:
+  calendar:
