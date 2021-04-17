@@ -36,7 +36,6 @@ message UpdateEventRequest {
 }
 
 message UpdateEventResponse {
-  bool ok = 1;
 }
 
 message DeleteEventRequest {
@@ -44,7 +43,6 @@ message DeleteEventRequest {
 }
 
 message DeleteEventResponse {
-  bool ok = 1;
 }
 
 message Event

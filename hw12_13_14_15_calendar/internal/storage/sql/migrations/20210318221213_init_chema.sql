@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 CREATE table events
 (
-    id          integer primary key,
+    id          serial primary key,
     title       text,
     start_time  timestamp,
     duration    integer,

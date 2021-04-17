@@ -2,9 +2,7 @@ package sqlstorage
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/common"
@@ -13,10 +11,8 @@ import (
 )
 
 type Storage struct {
-	db      *sqlx.DB
-	log     *logrus.Logger
-	counter int64
-	mu      sync.RWMutex
+	db  *sqlx.DB
+	log *logrus.Logger
 }
 
 func New(ctx context.Context, log *logrus.Logger, dsn string) (*Storage, error) {
@@ -28,31 +24,22 @@ func New(ctx context.Context, log *logrus.Logger, dsn string) (*Storage, error) 
 	if err != nil {
 		return nil, err
 	}
-	var counter sql.NullInt64
-	err = db.Get(&counter, "SELECT max(id) + 1 from events")
-	if err != nil {
-		return nil, err
-	}
-	return &Storage{db: db, log: log, counter: counter.Int64}, nil
+	return &Storage{db: db, log: log}, nil
 }
 
 func (s *Storage) CreateEvent(ctx context.Context, event *common.Event) (int64, error) {
-	s.mu.RLock()
-	id := s.counter
-	s.mu.RUnlock()
-	event.ID = id
 	event.Created = time.Now()
 	event.Updated = time.Now()
 	query := fmt.Sprintf(`
-INSERT INTO events (id, title, start_time, duration, description, owner, notify_time) VALUES (%d, '%s', '%s', %d, '%s', '%d', '%d')
-`, id, event.Title, event.StartTime.Format(common.PgTimestampFmt), event.Duration, event.Description, event.Owner, event.NotifyTime)
-	_, err := s.db.ExecContext(ctx, query)
+INSERT INTO events (title, start_time, duration, description, owner, notify_time) VALUES ('%s', '%s', %d, '%s', '%d', '%d')
+RETURNING id;
+`, event.Title, event.StartTime.Format(common.PgTimestampFmt), event.Duration, event.Description, event.Owner, event.NotifyTime)
+	row := s.db.QueryRowxContext(ctx, query)
+	var id int64
+	err := row.Scan(&id)
 	if err != nil {
 		return 0, err
 	}
-	s.mu.Lock()
-	s.counter++
-	s.mu.Unlock()
 	s.log.Trace("added event ", id)
 	return id, nil
 }

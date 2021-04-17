@@ -31,7 +31,7 @@ func TestStorage(t *testing.T) {
 		NotifyTime:  100,
 	})
 	require.NoError(t, err)
-	require.Equal(t, id, int64(0))
+	require.Equal(t, id, int64(1))
 
 	id, err = events.CreateEvent(context.Background(), &common.Event{
 		Title:       "Second",
@@ -42,12 +42,12 @@ func TestStorage(t *testing.T) {
 		NotifyTime:  100,
 	})
 	require.NoError(t, err)
-	require.Equal(t, id, int64(1))
+	require.Equal(t, id, int64(2))
 
 	test, _ := events.ListEventsByDay(context.Background(), tt)
 	require.Len(t, test, 2)
 
-	err = events.UpdateEvent(context.Background(), 0, &common.Event{
+	err = events.UpdateEvent(context.Background(), 1, &common.Event{
 		Title:       "First edited",
 		StartTime:   tt,
 		Duration:    5,
@@ -57,7 +57,7 @@ func TestStorage(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = events.DeleteEvent(context.Background(), 1)
+	err = events.DeleteEvent(context.Background(), 2)
 	require.NoError(t, err)
 
 	elems, err := events.ListEventsByDay(context.Background(), tt)
@@ -73,7 +73,7 @@ func TestStorage(t *testing.T) {
 
 	id, err = events.CreateEvent(context.Background(), &common.Event{})
 	require.NoError(t, err)
-	require.Equal(t, id, int64(2))
+	require.Equal(t, id, int64(3))
 
 	_, err = events.CreateEvent(context.Background(), &common.Event{StartTime: tt.AddDate(0, 0, 6)})
 	require.NoError(t, err)

@@ -56,12 +56,12 @@ func (r *RPCServer) Stop() {
 
 func (r *RPCServer) UpdateEvent(ctx context.Context, request *events_v1.UpdateEventRequest) (*events_v1.UpdateEventResponse, error) {
 	err := r.app.UpdateEvent(ctx, request.GetId(), pb2Event(request.GetEvent()))
-	return &events_v1.UpdateEventResponse{Ok: err != nil}, err
+	return &events_v1.UpdateEventResponse{}, err
 }
 
 func (r *RPCServer) DeleteEvent(ctx context.Context, id *events_v1.DeleteEventRequest) (*events_v1.DeleteEventResponse, error) {
 	err := r.app.DeleteEvent(ctx, id.GetId())
-	return &events_v1.DeleteEventResponse{Ok: err != nil}, err
+	return &events_v1.DeleteEventResponse{}, err
 }
 
 func (r *RPCServer) CreateEvent(ctx context.Context, event *events_v1.CreateEventRequest) (*events_v1.CreateEventResponse, error) {
