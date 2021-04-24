@@ -1,7 +1,9 @@
 package rmq
 
 import (
-	"context"
+	"fmt"
+	"sync"
+	"time"
 
 	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/common"
 	"github.com/sirupsen/logrus"
@@ -13,6 +15,8 @@ type Client struct {
 	conn *amqp.Connection
 	ch   *amqp.Channel
 	q    amqp.Queue
+	busy bool
+	mx   sync.Mutex
 }
 
 const retry = 5
@@ -20,11 +24,11 @@ const retry = 5
 func GetRMQConnectionAndDeclare(log *logrus.Logger, dsn string, ttl int64) (*Client, error) {
 	conn, err := amqp.Dial(dsn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create connection: %w", err)
 	}
 	ch, err := conn.Channel()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create channel: %w", err)
 	}
 	var args amqp.Table
 	if ttl != 0 {
@@ -32,19 +36,22 @@ func GetRMQConnectionAndDeclare(log *logrus.Logger, dsn string, ttl int64) (*Cli
 	}
 	topic, err := ch.QueueDeclare("notifications", false, false, false, false, args)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to declare queue: %w", err)
 	}
 	return &Client{
 		log:  log,
 		conn: conn,
 		ch:   ch,
 		q:    topic,
-	}, err
+	}, nil
 }
 
 func (c *Client) Close() error {
 	if err := c.ch.Close(); err != nil {
 		c.log.Warn("err closing rmq channel: ", err)
+	}
+	for !c.busy {
+		time.Sleep(100 * time.Millisecond)
 	}
 	return c.conn.Close()
 }
@@ -73,16 +80,19 @@ func (c *Client) Notify(events []common.Event) {
 	}
 }
 
-func (c *Client) ConsumeAndSend(ctx context.Context, sender func([]byte)) error {
+func (c *Client) ConsumeAndSend(sender func([]byte)) error {
 	messages, err := c.ch.Consume(c.q.Name, "sender", true, false, false, false, nil)
 	if err != nil {
 		return err
 	}
-	go func() {
-		for msg := range messages {
-			sender(msg.Body)
-		}
-	}()
-	<-ctx.Done()
+	c.mx.Lock()
+	c.busy = true
+	c.mx.Unlock()
+	for msg := range messages {
+		sender(msg.Body)
+	}
+	c.mx.Lock()
+	c.busy = false
+	c.mx.Unlock()
 	return nil
 }

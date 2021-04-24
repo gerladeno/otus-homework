@@ -3,17 +3,16 @@ package main
 import (
 	"context"
 	"flag"
-	"os"
-	"os/signal"
-	"sync"
-	"syscall"
-
 	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/cmd"
 	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/app"
 	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/logger"
 	internalgrpc "github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/server/grpc"
 	internalhttp "github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/server/http"
 	_ "github.com/jackc/pgx/v4/stdlib"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 )
 
 var configFile string
@@ -34,16 +33,6 @@ func main() {
 	log := logger.New(config.Logger.Level, config.Logger.Path)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	storage, err := cmd.GetStorage(ctx, log, config.Storage)
-	if err != nil {
-		log.Fatalf("failed to connect to database: %s", err)
-	}
-
-	calendar := app.New(log, storage)
-	handler := internalhttp.NewEventHandler(calendar, log)
-	router := internalhttp.NewRouter(handler, log, version)
-	httpServer := internalhttp.NewServer(log, router, config.HTTP.Port)
-	grpcServer := internalgrpc.NewRPCServer(calendar, log, config.GRPC.Network, config.GRPC.Port)
 
 	go func() {
 		signals := make(chan os.Signal, 1)
@@ -58,6 +47,18 @@ func main() {
 		signal.Stop(signals)
 		cancel()
 	}()
+
+	storage, err := cmd.GetStorage(ctx, log, config.Storage)
+	if err != nil {
+		log.Fatalf("failed to connect to database: %s", err)
+	}
+
+	calendar := app.New(log, storage)
+	handler := internalhttp.NewEventHandler(calendar, log)
+	router := internalhttp.NewRouter(handler, log, version)
+	httpServer := internalhttp.NewServer(log, router, config.HTTP.Port)
+	grpcServer := internalgrpc.NewRPCServer(calendar, log, config.GRPC.Network, config.GRPC.Port)
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {

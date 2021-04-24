@@ -1,6 +1,6 @@
 {
   "sender": {
-    "sender_param_1": "INFO"
+    "sender_param_1": "TEST"
   },
   "logger": {
     "level": "DEBUG",

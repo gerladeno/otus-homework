@@ -10,7 +10,7 @@ import (
 )
 
 type Storage struct {
-	mu      sync.Mutex
+	mu      sync.RWMutex
 	events  map[int64]common.Event
 	counter int64
 	log     *logrus.Logger
@@ -80,21 +80,21 @@ func (s *Storage) ListEventsByMonth(_ context.Context, date time.Time) ([]common
 
 func (s *Storage) listEvents(fromDate, toDate time.Time) ([]common.Event, error) {
 	events := make([]common.Event, 0)
-	s.mu.Lock()
+	s.mu.RLock()
 	for _, event := range s.events {
 		if (event.StartTime.After(fromDate) || event.StartTime.Equal(fromDate)) && event.StartTime.Before(toDate) {
 			events = append(events, event)
 		}
 	}
-	s.mu.Unlock()
+	s.mu.RUnlock()
 	return events, nil
 }
 
 func (s *Storage) ListEventsToNotify(_ context.Context) (events []common.Event, err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	for _, event := range s.events {
-		if time.Until(event.StartTime).Seconds() < float64(event.NotifyTime) {
+		if time.Until(event.StartTime).Seconds() < float64(event.NotifyTime) && event.NotifyTime != 0 {
 			events = append(events, event)
 		}
 	}

@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"flag"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -47,7 +50,7 @@ func main() {
 		cancel()
 	}()
 
-	if err = rabbit.ConsumeAndSend(ctx, PrepareSender(log, config.Sender)); err != nil {
+	if err = rabbit.ConsumeAndSend(PrepareSender(log, config.Sender)); err != nil {
 		log.Fatal("failed to init consumer: ", err)
 	}
 	if err = rabbit.Close(); err != nil {
@@ -61,7 +64,22 @@ func PrepareSender(log *logrus.Logger, conf SenderConfig) func([]byte) {
 		if err := json.Unmarshal(body, &n); err != nil {
 			log.Warnf("failed to decode a message: %s", string(body))
 		}
-		if conf.SenderParam1 == "INFO" {
+		if conf.SenderParam1 == "TEST" {
+			log.Info("NOTIFICATION: ", n.String())
+			host := os.Getenv("CALENDAR_HOST")
+			if host == "" {
+				host = "http://172.17.0.1:3002"
+			} else {
+				host = "http://" + host + ":3002"
+			}
+			c := &http.Client{Transport: http.DefaultTransport}
+			c.Transport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+			_, err := c.Post(host+"/notify", "application/json", bytes.NewReader(body))
+			if err != nil {
+				log.Warnf("err notifying: %s. err: %s", n.String(), err)
+				return
+			}
+		} else if conf.SenderParam1 == "INFO" {
 			log.Info("NOTIFICATION: ", n.String())
 		} else {
 			log.Debug("NOTIFICATION: ", n.String())

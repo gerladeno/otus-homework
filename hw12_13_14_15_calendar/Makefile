@@ -1,5 +1,7 @@
 BIN := "./bin/calendar"
 DOCKER_IMG="calendar:develop"
+PG_USER := "calendar"
+PG_PASSWORD := "calendar"
 
 GIT_HASH := $(shell git log --format="%h" -n 1)
 LDFLAGS := -X main.release="develop" -X main.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%S) -X main.gitHash=$(GIT_HASH)
@@ -17,10 +19,10 @@ build_sender:
 	go build -v -o ./bin/sender ./cmd/sender
 
 start_db:
-	docker-compose -f deployments/docker-compose.yaml up postgres-calendar
+	PG_USER=$(PG_USER) PG_PASSWORD=$(PG_PASSWORD) docker-compose -f deployments/docker-compose.yml up calendar-postgres
 
 start_rabbit:
-	docker-compose -f deployments/docker-compose.yaml up rabbit-calendar
+	PG_USER=$(PG_USER) PG_PASSWORD=$(PG_PASSWORD) docker-compose -f deployments/docker-compose.yml up calendar-rabbit
 
 run_calendar: build_calendar
 	$(BIN) --config ./configs/calendar_config.json
@@ -32,19 +34,27 @@ run_sender: build_sender
 	./cmd/sender --config ./configs/sender_config.json
 
 build_images:
-	docker-compose -f deployments/docker-compose.yaml build
+	docker-compose -f deployments/docker-compose.yml build
 
 up:
-	PG_USER=calendar PG_PASSWORD=calendar docker-compose -f deployments/docker-compose.yaml up
+	PG_USER=$(PG_USER) PG_PASSWORD=$(PG_PASSWORD) docker-compose -f deployments/docker-compose.yml up -d\
+ 	calendar-postgres calendar-rabbit calendar-calendar calendar-scheduler calendar-sender
 
 down:
-	docker-compose -f deployments/docker-compose.yaml down
+	docker-compose -f deployments/docker-compose.yml down
 
 version: build_calendar
 	$(BIN) version
 
 test:
-	go test -race ./...
+	go test -race -count=50 ./internal/server/grpc ./internal/server/http ./internal/storage/memory ./internal/storage/sql
+
+#integration-tests: up
+#	docker-compose -f deployments/docker-compose.yml run calendar-integration-tests
+#	docker-compose -f deployments/docker-compose.yml down
+
+integration-tests:
+	PG_USER=$(PG_USER) PG_PASSWORD=$(PG_PASSWORD) docker-compose -f deployments/docker-compose.yml up -d
 
 install-lint-deps:
 	(which golangci-lint > /dev/null) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.37.0

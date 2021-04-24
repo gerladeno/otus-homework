@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/common"
-	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/server/grpc/events_v1"
+	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/server/grpc/eventsv1"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -39,7 +39,7 @@ func (r *RPCServer) Start(ctx context.Context) error {
 		return err
 	}
 	reflection.Register(r.server)
-	events_v1.RegisterEventsHandlerServer(r.server, r)
+	eventsv1.RegisterEventsHandlerServer(r.server, r)
 	go func() {
 		<-ctx.Done()
 		r.Stop()
@@ -54,62 +54,62 @@ func (r *RPCServer) Stop() {
 	r.server.Stop()
 }
 
-func (r *RPCServer) UpdateEvent(ctx context.Context, request *events_v1.UpdateEventRequest) (*events_v1.UpdateEventResponse, error) {
+func (r *RPCServer) UpdateEvent(ctx context.Context, request *eventsv1.UpdateEventRequest) (*eventsv1.UpdateEventResponse, error) {
 	err := r.app.UpdateEvent(ctx, request.GetId(), pb2Event(request.GetEvent()))
-	return &events_v1.UpdateEventResponse{}, err
+	return &eventsv1.UpdateEventResponse{}, err
 }
 
-func (r *RPCServer) DeleteEvent(ctx context.Context, id *events_v1.DeleteEventRequest) (*events_v1.DeleteEventResponse, error) {
+func (r *RPCServer) DeleteEvent(ctx context.Context, id *eventsv1.DeleteEventRequest) (*eventsv1.DeleteEventResponse, error) {
 	err := r.app.DeleteEvent(ctx, id.GetId())
-	return &events_v1.DeleteEventResponse{}, err
+	return &eventsv1.DeleteEventResponse{}, err
 }
 
-func (r *RPCServer) CreateEvent(ctx context.Context, event *events_v1.CreateEventRequest) (*events_v1.CreateEventResponse, error) {
+func (r *RPCServer) CreateEvent(ctx context.Context, event *eventsv1.CreateEventRequest) (*eventsv1.CreateEventResponse, error) {
 	id, err := r.app.CreateEvent(ctx, pb2Event(event.GetEvent()))
 	if err != nil {
 		return nil, err
 	}
-	return &events_v1.CreateEventResponse{Id: id}, nil
+	return &eventsv1.CreateEventResponse{Id: id}, nil
 }
 
-func (r *RPCServer) ListEventsByDay(ctx context.Context, date *events_v1.ListEventsRequest) (*events_v1.ListEventsResponse, error) {
+func (r *RPCServer) ListEventsByDay(ctx context.Context, date *eventsv1.ListEventsRequest) (*eventsv1.ListEventsResponse, error) {
 	eventsList, err := r.app.ListEventsByDay(ctx, date.GetFromDate().AsTime())
 	if err != nil {
 		return nil, err
 	}
-	eventsProto := make([]*events_v1.Event, 0, len(eventsList))
+	eventsProto := make([]*eventsv1.Event, 0, len(eventsList))
 	for _, event := range eventsList {
-		eventsProto = append(eventsProto, event2Pb(event))
+		eventsProto = append(eventsProto, Event2Pb(event))
 	}
-	return &events_v1.ListEventsResponse{Events: eventsProto}, nil
+	return &eventsv1.ListEventsResponse{Events: eventsProto}, nil
 }
 
-func (r *RPCServer) ListEventsByWeek(ctx context.Context, date *events_v1.ListEventsRequest) (*events_v1.ListEventsResponse, error) {
+func (r *RPCServer) ListEventsByWeek(ctx context.Context, date *eventsv1.ListEventsRequest) (*eventsv1.ListEventsResponse, error) {
 	eventsList, err := r.app.ListEventsByWeek(ctx, date.GetFromDate().AsTime())
 	if err != nil {
 		return nil, err
 	}
-	eventsProto := make([]*events_v1.Event, 0, len(eventsList))
+	eventsProto := make([]*eventsv1.Event, 0, len(eventsList))
 	for _, event := range eventsList {
-		eventsProto = append(eventsProto, event2Pb(event))
+		eventsProto = append(eventsProto, Event2Pb(event))
 	}
-	return &events_v1.ListEventsResponse{Events: eventsProto}, nil
+	return &eventsv1.ListEventsResponse{Events: eventsProto}, nil
 }
 
-func (r *RPCServer) ListEventsByMonth(ctx context.Context, date *events_v1.ListEventsRequest) (*events_v1.ListEventsResponse, error) {
+func (r *RPCServer) ListEventsByMonth(ctx context.Context, date *eventsv1.ListEventsRequest) (*eventsv1.ListEventsResponse, error) {
 	eventsList, err := r.app.ListEventsByMonth(ctx, date.GetFromDate().AsTime())
 	if err != nil {
 		return nil, err
 	}
-	eventsProto := make([]*events_v1.Event, 0, len(eventsList))
+	eventsProto := make([]*eventsv1.Event, 0, len(eventsList))
 	for _, event := range eventsList {
-		eventsProto = append(eventsProto, event2Pb(event))
+		eventsProto = append(eventsProto, Event2Pb(event))
 	}
-	return &events_v1.ListEventsResponse{Events: eventsProto}, nil
+	return &eventsv1.ListEventsResponse{Events: eventsProto}, nil
 }
 
-func event2Pb(source common.Event) *events_v1.Event {
-	return &events_v1.Event{
+func Event2Pb(source common.Event) *eventsv1.Event {
+	return &eventsv1.Event{
 		Id:          source.ID,
 		Title:       source.Title,
 		StartTime:   timestamppb.New(source.StartTime),
@@ -122,7 +122,7 @@ func event2Pb(source common.Event) *events_v1.Event {
 	}
 }
 
-func pb2Event(source *events_v1.Event) *common.Event {
+func pb2Event(source *eventsv1.Event) *common.Event {
 	return &common.Event{
 		ID:          source.GetId(),
 		Title:       source.GetTitle(),

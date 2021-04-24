@@ -33,6 +33,7 @@ func main() {
 		log.Fatalf("failed to connect to rmq and declare topic: %s", err)
 	}
 	scheduler := time.NewTicker(time.Duration(config.Scheduler.Period))
+	defer scheduler.Stop()
 	ctx, cancel := context.WithCancel(context.Background())
 
 	storage, err := cmd.GetStorage(ctx, log, config.Storage)

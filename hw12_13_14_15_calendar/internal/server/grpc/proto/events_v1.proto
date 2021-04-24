@@ -2,8 +2,8 @@ syntax = "proto3";
 
 import "google/protobuf/timestamp.proto";
 
-package events_v1;
-option go_package = "./events_v1";
+package eventsv1;
+option go_package = "./eventsv1";
 
 service EventsHandler {
   rpc ListEventsByDay (ListEventsRequest) returns (ListEventsResponse);

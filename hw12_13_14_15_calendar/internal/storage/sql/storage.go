@@ -120,6 +120,9 @@ WHERE start_time >= timestamp '%s'
 		}
 		result = append(result, event)
 	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
@@ -127,7 +130,8 @@ func (s *Storage) ListEventsToNotify(ctx context.Context) (events []common.Event
 	query := `
 SELECT *
 FROM events
-WHERE EXTRACT(EPOCH FROM start_time) - EXTRACT(EPOCH FROM NOW()) < notify_time;
+WHERE EXTRACT(EPOCH FROM start_time) - EXTRACT(EPOCH FROM NOW()) < notify_time
+AND notify_time != 0;
 `
 	rows, err := s.db.QueryxContext(ctx, query)
 	defer func() {
@@ -145,6 +149,9 @@ WHERE EXTRACT(EPOCH FROM start_time) - EXTRACT(EPOCH FROM NOW()) < notify_time;
 			return nil, err
 		}
 		events = append(events, event)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
 	}
 	return events, nil
 }

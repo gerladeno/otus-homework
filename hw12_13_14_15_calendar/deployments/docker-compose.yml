@@ -34,7 +34,7 @@ services:
     networks:
       - calendar
     ports:
-      - 8888:3000
+      - 8888:8888
       - 3005:3005
     volumes:
       - ../configs:/etc/calendar
@@ -73,5 +73,18 @@ services:
     restart: on-failure
     depends_on:
       - calendar-rabbit
+  calendar-integration-tests:
+    build:
+      context: ..
+      dockerfile: ./build/integration/Dockerfile
+    container_name: calendar-integration-tests
+    environment:
+      CALENDAR_HOST: calendar-calendar
+    networks:
+      - calendar
+    ports:
+      - 3002:3002
+    depends_on:
+      - calendar-calendar
 networks:
   calendar:

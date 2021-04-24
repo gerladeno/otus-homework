@@ -15,4 +15,4 @@ LABEL MAINTAINERS="student@otus.ru"
 
 COPY --from=builder /src/app/scheduler /scheduler
 
-ENTRYPOINT ["/scheduler"]
+ENTRYPOINT ["./scheduler"]

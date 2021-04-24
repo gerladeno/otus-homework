@@ -1,12 +1,12 @@
 CREATE TABLE IF NOT EXISTS events
 (
     id          serial primary key,
-    title       text,
-    start_time  timestamp,
-    duration    integer,
-    description text,
-    owner       integer,
-    notify_time integer,
+    title       text      not null,
+    start_time  timestamp not null,
+    duration    integer   not null,
+    description text      not null,
+    owner       integer   not null,
+    notify_time integer   not null,
     created     timestamp default now(),
     updated     timestamp default now()
 );
