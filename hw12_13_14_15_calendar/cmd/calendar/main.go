@@ -3,16 +3,17 @@ package main
 import (
 	"context"
 	"flag"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+
 	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/cmd"
 	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/app"
 	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/logger"
 	internalgrpc "github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/server/grpc"
 	internalhttp "github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/server/http"
 	_ "github.com/jackc/pgx/v4/stdlib"
-	"os"
-	"os/signal"
-	"sync"
-	"syscall"
 )
 
 var configFile string

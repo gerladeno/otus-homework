@@ -26,7 +26,7 @@ const retries = 3
 type CalendarSuite struct {
 	ctx context.Context
 	suite.Suite
-	clientHTTP     *integration.CalendarHttpApi
+	clientHTTP     *integration.CalendarHTTPApi
 	clientGRPC     eventsv1.EventsHandlerClient
 	idsToDelete    map[int64]struct{}
 	notificationCh chan *common.Notification
@@ -55,12 +55,12 @@ func (s *CalendarSuite) SetupSuite() {
 	connHTTP.Transport = http.DefaultTransport
 	connHTTP.Transport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
-	s.clientHTTP = &integration.CalendarHttpApi{ConnHTTP: &connHTTP, Host: "http://" + calendarHost + ":8888"}
+	s.clientHTTP = &integration.CalendarHTTPApi{ConnHTTP: &connHTTP, Host: "http://" + calendarHost + ":8888"}
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.clientGRPC = eventsv1.NewEventsHandlerClient(connGRPC)
 	s.notificationCh = make(chan *common.Notification, 100)
 	s.idsToDelete = make(map[int64]struct{})
-	go s.serveNotifyHttp()
+	go s.serveNotifyHTTP()
 }
 
 func (s *CalendarSuite) SetupTest() {
@@ -145,9 +145,7 @@ func (s *CalendarSuite) TestAddAndListEventsGRPC() {
 		for {
 			select {
 			case notification := <-s.notificationCh:
-				if _, ok := ids[notification.ID]; ok {
-					delete(ids, notification.ID)
-				}
+				delete(ids, notification.ID)
 				if len(ids) == 0 {
 					return nil
 				}
@@ -171,45 +169,45 @@ func (s *CalendarSuite) TestAddAndListEventsHTTP() {
 		Owner:       1,
 		NotifyTime:  600000000,
 	}
-	id, code := s.clientHTTP.CreateEvent(event)
+	id, code := s.clientHTTP.CreateEvent(s.ctx, event)
 	s.Require().Equal(code, http.StatusOK)
 	ids[id] = struct{}{}
 	toUpdate := id
 
 	event.Owner = 2
 	event.StartTime = event.StartTime.Add(5 * 24 * time.Hour)
-	id, code = s.clientHTTP.CreateEvent(event)
+	id, code = s.clientHTTP.CreateEvent(s.ctx, event)
 	s.Require().Equal(code, http.StatusOK)
 	ids[id] = struct{}{}
 
 	event.Owner = 3
 	event.StartTime = event.StartTime.Add(20 * 24 * time.Hour)
-	id, code = s.clientHTTP.CreateEvent(event)
+	id, code = s.clientHTTP.CreateEvent(s.ctx, event)
 	s.Require().Equal(code, http.StatusOK)
 	ids[id] = struct{}{}
 
 	event.Owner = 4
 	event.StartTime = event.StartTime.Add(20 * 24 * time.Hour)
-	id, code = s.clientHTTP.CreateEvent(event)
+	id, code = s.clientHTTP.CreateEvent(s.ctx, event)
 	s.Require().Equal(code, http.StatusOK)
 	ids[id] = struct{}{}
 
 	event.Owner = 100
 	event.StartTime = t
-	code = s.clientHTTP.UpdateEvent(event, toUpdate)
+	code = s.clientHTTP.UpdateEvent(s.ctx, event, toUpdate)
 	s.Require().Equal(code, http.StatusOK)
 
-	events, code := s.clientHTTP.ListEventsByDay(t.Format("2006-01-02"))
+	events, code := s.clientHTTP.ListEventsByDay(s.ctx, t.Format("2006-01-02"))
 	s.Require().Equal(code, http.StatusOK)
 	s.Require().Len(events, 1)
 	s.Require().Equal(events[0].Owner, int64(100))
 
-	events, code = s.clientHTTP.ListEventsByWeek(t.Format("2006-01-02"))
-	s.Require().NoError(err)
+	events, code = s.clientHTTP.ListEventsByWeek(s.ctx, t.Format("2006-01-02"))
+	s.Require().Equal(code, http.StatusOK)
 	s.Require().Len(events, 2)
 
-	events, code = s.clientHTTP.ListEventsByMonth(t.Format("2006-01-02"))
-	s.Require().NoError(err)
+	events, code = s.clientHTTP.ListEventsByMonth(s.ctx, t.Format("2006-01-02"))
+	s.Require().Equal(code, http.StatusOK)
 	s.Require().Len(events, 3)
 
 	for id := range ids {
@@ -226,9 +224,7 @@ func (s *CalendarSuite) TestAddAndListEventsHTTP() {
 		for {
 			select {
 			case notification := <-s.notificationCh:
-				if _, ok := ids[notification.ID]; ok {
-					delete(ids, notification.ID)
-				}
+				delete(ids, notification.ID)
 				if len(ids) == 0 {
 					return nil
 				}
@@ -244,7 +240,7 @@ func TestCalendarSuite(t *testing.T) {
 	suite.Run(t, new(CalendarSuite))
 }
 
-func (s *CalendarSuite) serveNotifyHttp() {
+func (s *CalendarSuite) serveNotifyHTTP() {
 	notifyHandler := func(w http.ResponseWriter, r *http.Request) {
 		n := common.Notification{}
 		err := json.NewDecoder(r.Body).Decode(&n)

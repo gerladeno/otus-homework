@@ -32,14 +32,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to connect to rmq and declare topic: %s", err)
 	}
-	scheduler := time.NewTicker(time.Duration(config.Scheduler.Period))
-	defer scheduler.Stop()
 	ctx, cancel := context.WithCancel(context.Background())
 
 	storage, err := cmd.GetStorage(ctx, log, config.Storage)
 	if err != nil {
 		log.Fatalf("failed to connect to database: %s", err)
 	}
+
+	scheduler := time.NewTicker(time.Duration(config.Scheduler.Period))
+	defer scheduler.Stop()
 
 	sigCh := make(chan os.Signal, 1)
 	go func() {

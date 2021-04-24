@@ -4,6 +4,7 @@ package eventsv1
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -101,24 +102,28 @@ type EventsHandlerServer interface {
 }
 
 // UnimplementedEventsHandlerServer should be embedded to have forward compatible implementations.
-type UnimplementedEventsHandlerServer struct {
-}
+type UnimplementedEventsHandlerServer struct{}
 
 func (UnimplementedEventsHandlerServer) ListEventsByDay(context.Context, *ListEventsRequest) (*ListEventsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListEventsByDay not implemented")
 }
+
 func (UnimplementedEventsHandlerServer) ListEventsByWeek(context.Context, *ListEventsRequest) (*ListEventsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListEventsByWeek not implemented")
 }
+
 func (UnimplementedEventsHandlerServer) ListEventsByMonth(context.Context, *ListEventsRequest) (*ListEventsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListEventsByMonth not implemented")
 }
+
 func (UnimplementedEventsHandlerServer) CreateEvent(context.Context, *CreateEventRequest) (*CreateEventResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateEvent not implemented")
 }
+
 func (UnimplementedEventsHandlerServer) UpdateEvent(context.Context, *UpdateEventRequest) (*UpdateEventResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateEvent not implemented")
 }
+
 func (UnimplementedEventsHandlerServer) DeleteEvent(context.Context, *DeleteEventRequest) (*DeleteEventResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteEvent not implemented")
 }

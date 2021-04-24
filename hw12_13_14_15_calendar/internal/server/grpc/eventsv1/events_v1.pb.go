@@ -7,11 +7,12 @@
 package eventsv1
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
@@ -597,19 +598,22 @@ func file_events_v1_proto_rawDescGZIP() []byte {
 	return file_events_v1_proto_rawDescData
 }
 
-var file_events_v1_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
-var file_events_v1_proto_goTypes = []interface{}{
-	(*ListEventsRequest)(nil),   // 0: eventsv1.ListEventsRequest
-	(*ListEventsResponse)(nil),  // 1: eventsv1.ListEventsResponse
-	(*CreateEventRequest)(nil),  // 2: eventsv1.CreateEventRequest
-	(*CreateEventResponse)(nil), // 3: eventsv1.CreateEventResponse
-	(*UpdateEventRequest)(nil),  // 4: eventsv1.UpdateEventRequest
-	(*UpdateEventResponse)(nil), // 5: eventsv1.UpdateEventResponse
-	(*DeleteEventRequest)(nil),  // 6: eventsv1.DeleteEventRequest
-	(*DeleteEventResponse)(nil), // 7: eventsv1.DeleteEventResponse
-	(*Event)(nil),               // 8: eventsv1.Event
-	(*timestamp.Timestamp)(nil), // 9: google.protobuf.Timestamp
-}
+var (
+	file_events_v1_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+	file_events_v1_proto_goTypes  = []interface{}{
+		(*ListEventsRequest)(nil),   // 0: eventsv1.ListEventsRequest
+		(*ListEventsResponse)(nil),  // 1: eventsv1.ListEventsResponse
+		(*CreateEventRequest)(nil),  // 2: eventsv1.CreateEventRequest
+		(*CreateEventResponse)(nil), // 3: eventsv1.CreateEventResponse
+		(*UpdateEventRequest)(nil),  // 4: eventsv1.UpdateEventRequest
+		(*UpdateEventResponse)(nil), // 5: eventsv1.UpdateEventResponse
+		(*DeleteEventRequest)(nil),  // 6: eventsv1.DeleteEventRequest
+		(*DeleteEventResponse)(nil), // 7: eventsv1.DeleteEventResponse
+		(*Event)(nil),               // 8: eventsv1.Event
+		(*timestamp.Timestamp)(nil), // 9: google.protobuf.Timestamp
+	}
+)
+
 var file_events_v1_proto_depIdxs = []int32{
 	9,  // 0: eventsv1.ListEventsRequest.from_date:type_name -> google.protobuf.Timestamp
 	8,  // 1: eventsv1.ListEventsResponse.events:type_name -> eventsv1.Event

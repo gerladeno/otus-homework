@@ -50,7 +50,7 @@ func main() {
 		cancel()
 	}()
 
-	if err = rabbit.ConsumeAndSend(PrepareSender(log, config.Sender)); err != nil {
+	if err = rabbit.ConsumeAndSend(ctx, PrepareSender(log, config.Sender)); err != nil {
 		log.Fatal("failed to init consumer: ", err)
 	}
 	if err = rabbit.Close(); err != nil {
@@ -58,13 +58,14 @@ func main() {
 	}
 }
 
-func PrepareSender(log *logrus.Logger, conf SenderConfig) func([]byte) {
-	return func(body []byte) {
+func PrepareSender(log *logrus.Logger, conf SenderConfig) func(context.Context, []byte) {
+	return func(ctx context.Context, body []byte) {
 		n := common.Notification{}
 		if err := json.Unmarshal(body, &n); err != nil {
 			log.Warnf("failed to decode a message: %s", string(body))
 		}
-		if conf.SenderParam1 == "TEST" {
+		switch conf.SenderParam1 {
+		case "TEST":
 			log.Info("NOTIFICATION: ", n.String())
 			host := os.Getenv("CALENDAR_HOST")
 			if host == "" {
@@ -73,15 +74,25 @@ func PrepareSender(log *logrus.Logger, conf SenderConfig) func([]byte) {
 				host = "http://" + host + ":3002"
 			}
 			c := &http.Client{Transport: http.DefaultTransport}
-			c.Transport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-			_, err := c.Post(host+"/notify", "application/json", bytes.NewReader(body))
+			c.Transport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec
+			req, err := http.NewRequestWithContext(ctx, "POST", host+"/notify", bytes.NewReader(body))
+			if err != nil {
+				log.Warnf("err creating a notification POST request: %s", err)
+				return
+			}
+			r, err := c.Do(req)
 			if err != nil {
 				log.Warnf("err notifying: %s. err: %s", n.String(), err)
 				return
 			}
-		} else if conf.SenderParam1 == "INFO" {
+			err = r.Body.Close()
+			if err != nil {
+				log.Warnf("err closing response body on a notification request: %s", err)
+				return
+			}
+		case "INFO":
 			log.Info("NOTIFICATION: ", n.String())
-		} else {
+		default:
 			log.Debug("NOTIFICATION: ", n.String())
 		}
 	}

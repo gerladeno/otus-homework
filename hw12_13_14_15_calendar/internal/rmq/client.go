@@ -1,6 +1,7 @@
 package rmq
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -80,7 +81,7 @@ func (c *Client) Notify(events []common.Event) {
 	}
 }
 
-func (c *Client) ConsumeAndSend(sender func([]byte)) error {
+func (c *Client) ConsumeAndSend(ctx context.Context, sender func(context.Context, []byte)) error {
 	messages, err := c.ch.Consume(c.q.Name, "sender", true, false, false, false, nil)
 	if err != nil {
 		return err
@@ -89,7 +90,7 @@ func (c *Client) ConsumeAndSend(sender func([]byte)) error {
 	c.busy = true
 	c.mx.Unlock()
 	for msg := range messages {
-		sender(msg.Body)
+		sender(ctx, msg.Body)
 	}
 	c.mx.Lock()
 	c.busy = false
