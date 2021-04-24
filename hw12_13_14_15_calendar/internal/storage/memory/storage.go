@@ -11,34 +11,25 @@ import (
 
 type Storage struct {
 	mu      sync.Mutex
-	events  map[uint64]*common.Event
-	counter uint64
+	events  map[int64]common.Event
+	counter int64
 	log     *logrus.Logger
 }
 
 func New(log *logrus.Logger) *Storage {
-	events := make(map[uint64]*common.Event)
+	events := make(map[int64]common.Event)
 	return &Storage{events: events, log: log}
 }
 
-func (s *Storage) ReadEvent(_ context.Context, id uint64) (*common.Event, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if elem, ok := s.events[id]; ok {
-		return elem, nil
-	}
-	return nil, common.ErrNoSuchEvent
-}
-
-func (s *Storage) CreateEvent(_ context.Context, event *common.Event) (uint64, error) {
+func (s *Storage) CreateEvent(_ context.Context, event *common.Event) (int64, error) {
 	event.Created = time.Now()
 	event.Updated = time.Now()
-	var id uint64
+	var id int64
 	s.mu.Lock()
 	{
 		id = s.counter
 		event.ID = id
-		s.events[s.counter] = event
+		s.events[s.counter] = *event
 		s.counter++
 	}
 	s.mu.Unlock()
@@ -46,7 +37,7 @@ func (s *Storage) CreateEvent(_ context.Context, event *common.Event) (uint64, e
 	return id, nil
 }
 
-func (s *Storage) UpdateEvent(_ context.Context, id uint64, event *common.Event) error {
+func (s *Storage) UpdateEvent(_ context.Context, id int64, event *common.Event) error {
 	event.ID = id
 	s.mu.Lock()
 	{
@@ -55,14 +46,14 @@ func (s *Storage) UpdateEvent(_ context.Context, id uint64, event *common.Event)
 		if _, ok := s.events[id]; !ok {
 			return common.ErrNoSuchEvent
 		}
-		s.events[id] = event
+		s.events[id] = *event
 	}
 	s.mu.Unlock()
 	s.log.Trace("modified event ", id)
 	return nil
 }
 
-func (s *Storage) DeleteEvent(_ context.Context, id uint64) error {
+func (s *Storage) DeleteEvent(_ context.Context, id int64) error {
 	if _, ok := s.events[id]; !ok {
 		return common.ErrNoSuchEvent
 	}
@@ -75,12 +66,37 @@ func (s *Storage) DeleteEvent(_ context.Context, id uint64) error {
 	return nil
 }
 
-func (s *Storage) ListEvents(_ context.Context) ([]*common.Event, error) {
-	events := make([]*common.Event, 0)
+func (s *Storage) ListEventsByDay(_ context.Context, date time.Time) ([]common.Event, error) {
+	return s.listEvents(date, date.AddDate(0, 0, 1))
+}
+
+func (s *Storage) ListEventsByWeek(_ context.Context, date time.Time) ([]common.Event, error) {
+	return s.listEvents(date, date.AddDate(0, 0, 7))
+}
+
+func (s *Storage) ListEventsByMonth(_ context.Context, date time.Time) ([]common.Event, error) {
+	return s.listEvents(date, date.AddDate(0, 1, 0))
+}
+
+func (s *Storage) listEvents(fromDate, toDate time.Time) ([]common.Event, error) {
+	events := make([]common.Event, 0)
 	s.mu.Lock()
 	for _, event := range s.events {
-		events = append(events, event)
+		if (event.StartTime.After(fromDate) || event.StartTime.Equal(fromDate)) && event.StartTime.Before(toDate) {
+			events = append(events, event)
+		}
 	}
 	s.mu.Unlock()
+	return events, nil
+}
+
+func (s *Storage) ListEventsToNotify(_ context.Context) (events []common.Event, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, event := range s.events {
+		if time.Until(event.StartTime).Seconds() < float64(event.NotifyTime) {
+			events = append(events, event)
+		}
+	}
 	return events, nil
 }

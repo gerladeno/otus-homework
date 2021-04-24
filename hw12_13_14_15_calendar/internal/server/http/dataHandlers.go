@@ -5,10 +5,13 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/common"
 	"github.com/go-chi/chi"
 )
+
+const dateFormat = "2006-01-02"
 
 var (
 	ErrWrongEventID     = errors.New("invalid or empty id")
@@ -17,17 +20,22 @@ var (
 )
 
 type JSONResponse struct {
-	Data  *interface{} `json:"data,omitempty"`
-	Error *string      `json:"error,omitempty"`
-	Code  int          `json:"code"`
+	Data  interface{} `json:"data,omitempty"`
+	Error *string     `json:"error,omitempty"`
+	Code  int         `json:"code"`
 }
 
 type ID struct {
-	ID uint64 `json:"id"`
+	ID int64 `json:"id"`
 }
 
-func (h *EventHandler) listEventsHandler(w http.ResponseWriter, r *http.Request) {
-	events, err := h.app.ListEvents(r.Context())
+func (h *EventHandler) listEventsByDayHandler(w http.ResponseWriter, r *http.Request) {
+	dateStr := r.URL.Query().Get("date")
+	date, err := time.Parse(dateFormat, dateStr)
+	if err != nil {
+		writeErrResponse(w, "unparsable date, use YYYY-MM-DD: "+dateFormat, http.StatusBadRequest)
+	}
+	events, err := h.app.ListEventsByDay(r.Context(), date)
 	if err != nil {
 		h.log.Warn("failed to get list of events: ", err)
 		writeErrResponse(w, err.Error(), http.StatusInternalServerError)
@@ -36,25 +44,34 @@ func (h *EventHandler) listEventsHandler(w http.ResponseWriter, r *http.Request)
 	writeOkResponse(w, events)
 }
 
-func (h *EventHandler) getEventHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := parseIDParam(r)
+func (h *EventHandler) listEventsByWeekHandler(w http.ResponseWriter, r *http.Request) {
+	dateStr := r.URL.Query().Get("date")
+	date, err := time.Parse(dateFormat, dateStr)
 	if err != nil {
-		writeErrResponse(w, ErrWrongEventID.Error(), http.StatusBadRequest)
-		h.log.Debug(err)
-		return
+		writeErrResponse(w, "unparsable date, use YYYY-MM-DD: "+dateFormat, http.StatusBadRequest)
 	}
-	event, err := h.app.ReadEvent(r.Context(), id)
+	events, err := h.app.ListEventsByWeek(r.Context(), date)
 	if err != nil {
-		if errors.Is(err, common.ErrNoSuchEvent) {
-			h.log.Debugf("failed to get an event %d: %s", id, err.Error())
-			writeErrResponse(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		h.log.Warnf("failed to get an event %d: %s", id, err.Error())
+		h.log.Warn("failed to get list of events: ", err)
 		writeErrResponse(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	writeOkResponse(w, event)
+	writeOkResponse(w, events)
+}
+
+func (h *EventHandler) listEventsByMonthHandler(w http.ResponseWriter, r *http.Request) {
+	dateStr := r.URL.Query().Get("date")
+	date, err := time.Parse(dateFormat, dateStr)
+	if err != nil {
+		writeErrResponse(w, "unparsable date, use YYYY-MM-DD: "+dateFormat, http.StatusBadRequest)
+	}
+	events, err := h.app.ListEventsByMonth(r.Context(), date)
+	if err != nil {
+		h.log.Warn("failed to get list of events: ", err)
+		writeErrResponse(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeOkResponse(w, events)
 }
 
 func (h *EventHandler) deleteEventHandler(w http.ResponseWriter, r *http.Request) {
@@ -117,7 +134,7 @@ func (h *EventHandler) editEventHandler(w http.ResponseWriter, r *http.Request) 
 		writeErrResponse(w, ErrUnparsableEvent.Error(), http.StatusBadRequest)
 		return
 	}
-	err = h.app.UpdateEvent(r.Context(), event, id)
+	err = h.app.UpdateEvent(r.Context(), id, event)
 	if err != nil {
 		if errors.Is(err, common.ErrNoSuchEvent) {
 			h.log.Debugf("failed to edit an event %d: %s", id, err.Error())
@@ -152,12 +169,12 @@ func writeErrResponse(w http.ResponseWriter, err string, status int) {
 	_ = json.NewEncoder(w).Encode(response)
 }
 
-func parseIDParam(r *http.Request) (uint64, error) {
+func parseIDParam(r *http.Request) (int64, error) {
 	idStr := chi.URLParam(r, "id")
 	if idStr == "" {
 		return 0, ErrWrongEventID
 	}
-	id, err := strconv.ParseUint(idStr, 0, 64)
+	id, err := strconv.ParseInt(idStr, 0, 64)
 	if err != nil {
 		return 0, err
 	}

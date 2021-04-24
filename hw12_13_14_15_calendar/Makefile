@@ -7,14 +7,29 @@ LDFLAGS := -X main.release="develop" -X main.buildDate=$(shell date -u +%Y-%m-%d
 generate:
 	go generate internal/server/grpc/server.go
 
-build:
+build_calendar:
 	go build -v -o $(BIN) -ldflags "$(LDFLAGS)" ./cmd/calendar
 
-start_db:
-	docker-compose -f deployments/docker-compose.yaml up
+build_scheduler:
+	go build -v -o ./bin/scheduler ./cmd/scheduler
 
-run: build
-	$(BIN) --config ./configs/config.json
+build_sender:
+	go build -v -o ./bin/sender ./cmd/sender
+
+start_db:
+	docker-compose -f deployments/docker-compose.yaml up postgres-calendar
+
+start_rabbit:
+	docker-compose -f deployments/docker-compose.yaml up rabbit-calendar
+
+run_calendar: build_calendar
+	$(BIN) --config ./configs/calendar_config.json
+
+run_scheduler: build_scheduler
+	./cmd/scheduler --config ./configs/scheduler_config.json
+
+run_sender: build_sender
+	./cmd/sender --config ./configs/sender_config.json
 
 build-img:
 	docker build \
@@ -25,11 +40,11 @@ build-img:
 run-img: build-img
 	docker run $(DOCKER_IMG)
 
-version: build
+version: build_calendar
 	$(BIN) version
 
 test:
-	go test -race ./internal/storage/sql/ ./internal/storage/memory/ ./internal/server/http/ ./internal/server/grpc/
+	go test -race ./...
 
 install-lint-deps:
 	(which golangci-lint > /dev/null) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.37.0

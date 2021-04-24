@@ -19,14 +19,50 @@ func TestListHandler(t *testing.T) {
 	tr := NewRouter(th, log, "test")
 	var result JSONResponse
 
-	t.Run("listEntries", func(t *testing.T) {
+	t.Run("listEntriesByDay", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/api/v1/listEvents", nil)
+		r := httptest.NewRequest("GET", "/api/v1/listEventsByDay?date=1987-10-16", nil)
 		tr.ServeHTTP(w, r)
 		require.Equal(t, w.Code, http.StatusOK)
 		err := json.NewDecoder(w.Body).Decode(&result)
 		require.NoError(t, err)
-		require.Equal(t, len((*result.Data).([]interface{})), 5)
+		require.Equal(t, len(result.Data.([]interface{})), 5)
+	})
+	t.Run("listEntriesByDay err", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/api/v1/listEventsByDay?date=1987-15-12", nil)
+		tr.ServeHTTP(w, r)
+		require.Equal(t, w.Code, http.StatusBadRequest)
+	})
+	t.Run("listEntriesByWeek", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/api/v1/listEventsByWeek?date=1987-10-16", nil)
+		tr.ServeHTTP(w, r)
+		require.Equal(t, w.Code, http.StatusOK)
+		err := json.NewDecoder(w.Body).Decode(&result)
+		require.NoError(t, err)
+		require.Equal(t, len(result.Data.([]interface{})), 15)
+	})
+	t.Run("listEntriesByWeek err", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/api/v1/listEventsByWeek?date=1987-15-12", nil)
+		tr.ServeHTTP(w, r)
+		require.Equal(t, w.Code, http.StatusBadRequest)
+	})
+	t.Run("listEntriesByMonth", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/api/v1/listEventsByMonth?date=1987-10-16", nil)
+		tr.ServeHTTP(w, r)
+		require.Equal(t, w.Code, http.StatusOK)
+		err := json.NewDecoder(w.Body).Decode(&result)
+		require.NoError(t, err)
+		require.Equal(t, len(result.Data.([]interface{})), 50)
+	})
+	t.Run("listEntriesByMonth err", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		r := httptest.NewRequest("GET", "/api/v1/listEventsByMonth?date=1987-15-12", nil)
+		tr.ServeHTTP(w, r)
+		require.Equal(t, w.Code, http.StatusBadRequest)
 	})
 }
 
@@ -42,7 +78,6 @@ func TestDeleteHandler(t *testing.T) {
 		errCode int
 		err     string
 	}{
-		{"invalid id", -1, http.StatusBadRequest, "invalid or empty id"},
 		{"no such entry", 0, http.StatusNotFound, "no such event"},
 		{"internal error", 1, http.StatusInternalServerError, "short buffer"},
 	}
@@ -63,49 +98,6 @@ func TestDeleteHandler(t *testing.T) {
 		r := httptest.NewRequest("GET", "/api/v1/deleteEvent/2", nil)
 		tr.ServeHTTP(w, r)
 		require.Equal(t, w.Code, http.StatusOK)
-	})
-}
-
-func TestReadEvent(t *testing.T) {
-	log := logrus.New()
-	th := NewEventHandler(common.TestApp{}, log)
-	tr := NewRouter(th, log, "test")
-	var result struct {
-		Data  *common.Event `json:"data,omitempty"`
-		Error *string       `json:"error,omitempty"`
-		Code  int           `json:"code"`
-	}
-	testsRead := []struct {
-		name    string
-		id      int
-		errCode int
-		err     string
-	}{
-		{"invalid id", -1, http.StatusBadRequest, "invalid or empty id"},
-		{"no such entry", 0, http.StatusNotFound, "no such event"},
-		{"internal error", 1, http.StatusInternalServerError, "short buffer"},
-	}
-	for _, test := range testsRead {
-		test := test
-		t.Run("readEntry", func(t *testing.T) {
-			w := httptest.NewRecorder()
-			r := httptest.NewRequest("GET", fmt.Sprintf("/api/v1/getEvent/%d", test.id), nil)
-			tr.ServeHTTP(w, r)
-			require.Equal(t, w.Code, test.errCode)
-			err := json.NewDecoder(w.Body).Decode(&result)
-			require.NoError(t, err)
-			require.Equal(t, *result.Error, test.err)
-			require.Nil(t, result.Data)
-		})
-	}
-	t.Run("ok", func(t *testing.T) {
-		w := httptest.NewRecorder()
-		r := httptest.NewRequest("GET", "/api/v1/getEvent/2", nil)
-		tr.ServeHTTP(w, r)
-		require.Equal(t, w.Code, http.StatusOK)
-		err := json.NewDecoder(w.Body).Decode(&result)
-		require.NoError(t, err)
-		require.Equal(t, result.Data, &common.Event{})
 	})
 }
 
@@ -156,7 +148,6 @@ func TestUpdateEvent(t *testing.T) {
 		errCode int
 		err     string
 	}{
-		{"invalid id", -1, http.StatusBadRequest, "invalid or empty id"},
 		{"no such entry", 0, http.StatusNotFound, "no such event"},
 		{"internal error", 1, http.StatusInternalServerError, "short buffer"},
 	}
