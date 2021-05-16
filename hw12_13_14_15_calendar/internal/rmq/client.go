@@ -3,6 +3,7 @@ package rmq
 import (
 	"context"
 	"fmt"
+
 	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/common"
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
