@@ -67,12 +67,13 @@ func PrepareSender(log *logrus.Logger, conf SenderConfig) func(context.Context, 
 		switch conf.SenderParam1 {
 		case "TEST":
 			log.Info("NOTIFICATION: ", n.String())
-			host := os.Getenv("CALENDAR_HOST")
+			host := os.Getenv("NOTIFY_HOST")
 			if host == "" {
 				host = "http://172.17.0.1:3002"
 			} else {
 				host = "http://" + host + ":3002"
 			}
+			log.Warn("host: ", host)
 			c := &http.Client{Transport: http.DefaultTransport}
 			c.Transport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec
 			req, err := http.NewRequestWithContext(ctx, "POST", host+"/notify", bytes.NewReader(body))

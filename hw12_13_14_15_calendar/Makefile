@@ -5,6 +5,7 @@ PG_PASSWORD := "calendar"
 
 GIT_HASH := $(shell git log --format="%h" -n 1)
 LDFLAGS := -X main.release="develop" -X main.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%S) -X main.gitHash=$(GIT_HASH)
+DOCKER_GATEWAY_HOST := $(shell hostname -I | awk '{print $$1}')
 
 generate:
 	go generate internal/server/grpc/server.go
@@ -33,11 +34,12 @@ run_scheduler: build_scheduler
 run_sender: build_sender
 	./cmd/sender --config ./configs/sender_config.json
 
-build_images:
+build_images: generate
 	docker-compose -f deployments/docker-compose.yml build
 
-up:
-	PG_USER=$(PG_USER) PG_PASSWORD=$(PG_PASSWORD) docker-compose -f deployments/docker-compose.yml up -d\
+up: build_images
+	DOCKER_GATEWAY_HOST=$(DOCKER_GATEWAY_HOST) PG_USER=$(PG_USER) PG_PASSWORD=$(PG_PASSWORD) \
+	docker-compose -f deployments/docker-compose.yml up -d \
  	calendar-postgres calendar-rabbit calendar-calendar calendar-scheduler calendar-sender
 
 down:
@@ -49,12 +51,9 @@ version: build_calendar
 test:
 	go test -race -count=50 ./internal/server/grpc ./internal/server/http ./internal/storage/memory ./internal/storage/sql
 
-#integration-tests: up
-#	docker-compose -f deployments/docker-compose.yml run calendar-integration-tests
-#	docker-compose -f deployments/docker-compose.yml down
-
-integration-tests:
-	PG_USER=$(PG_USER) PG_PASSWORD=$(PG_PASSWORD) docker-compose -f deployments/docker-compose.yml up -d
+integration-tests: up
+	docker-compose -f deployments/docker-compose.yml run --service-ports calendar-integration-tests
+	docker-compose -f deployments/docker-compose.yml down
 
 install-lint-deps:
 	(which golangci-lint > /dev/null) || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.37.0

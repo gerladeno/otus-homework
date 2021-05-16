@@ -3,9 +3,6 @@ package rmq
 import (
 	"context"
 	"fmt"
-	"sync"
-	"time"
-
 	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/common"
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
@@ -16,8 +13,7 @@ type Client struct {
 	conn *amqp.Connection
 	ch   *amqp.Channel
 	q    amqp.Queue
-	busy bool
-	mx   sync.Mutex
+	busy chan struct{}
 }
 
 const retry = 5
@@ -44,6 +40,7 @@ func GetRMQConnectionAndDeclare(log *logrus.Logger, dsn string, ttl int64) (*Cli
 		conn: conn,
 		ch:   ch,
 		q:    topic,
+		busy: make(chan struct{}, 1),
 	}, nil
 }
 
@@ -51,9 +48,8 @@ func (c *Client) Close() error {
 	if err := c.ch.Close(); err != nil {
 		c.log.Warn("err closing rmq channel: ", err)
 	}
-	for !c.busy {
-		time.Sleep(100 * time.Millisecond)
-	}
+	<-c.busy
+	close(c.busy)
 	return c.conn.Close()
 }
 
@@ -64,36 +60,31 @@ func (c *Client) Notify(events []common.Event) {
 			c.log.Warn("failed to encode msg: ", event.Notification().String())
 			continue
 		}
-		func() {
-			for i := 0; i < retry; i++ {
-				if err := c.ch.Publish("", c.q.Name, false, false,
-					amqp.Publishing{
-						ContentType: "application/json",
-						Body:        msg,
-					}); err != nil {
-					continue
-				}
-				c.log.Debugf("sent notification on %d: %s", event.ID, event.Title)
-				return
+		for i := 0; i < retry; i++ {
+			if err := c.ch.Publish("", c.q.Name, false, false,
+				amqp.Publishing{
+					ContentType: "application/json",
+					Body:        msg,
+				}); err != nil {
+				continue
 			}
-			c.log.Warn("failed to publish a notification: ")
-		}()
+			c.log.Debugf("sent notification on %d: %s", event.ID, event.Title)
+			break
+		}
+		c.log.Warn("failed to publish a notification: ")
 	}
 }
 
 func (c *Client) ConsumeAndSend(ctx context.Context, sender func(context.Context, []byte)) error {
+	c.busy <- struct{}{}
 	messages, err := c.ch.Consume(c.q.Name, "sender", true, false, false, false, nil)
 	if err != nil {
 		return err
 	}
-	c.mx.Lock()
-	c.busy = true
-	c.mx.Unlock()
+	<-c.busy
 	for msg := range messages {
 		sender(ctx, msg.Body)
 	}
-	c.mx.Lock()
-	c.busy = false
-	c.mx.Unlock()
+	c.busy <- struct{}{}
 	return nil
 }

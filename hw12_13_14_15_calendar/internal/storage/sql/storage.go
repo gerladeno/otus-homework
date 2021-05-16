@@ -36,8 +36,7 @@ RETURNING id;
 `, event.Title, event.StartTime.Format(common.PgTimestampFmt), event.Duration, event.Description, event.Owner, event.NotifyTime)
 	row := s.db.QueryRowxContext(ctx, query)
 	var id int64
-	err := row.Scan(&id)
-	if err != nil {
+	if err := row.Scan(&id); err != nil {
 		return 0, err
 	}
 	s.log.Trace("added event ", id)

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -31,6 +32,7 @@ type CalendarSuite struct {
 	idsToDelete    map[int64]struct{}
 	notificationCh chan *common.Notification
 	cancel         context.CancelFunc
+	wg             sync.WaitGroup
 }
 
 func (s *CalendarSuite) SetupSuite() {
@@ -56,14 +58,15 @@ func (s *CalendarSuite) SetupSuite() {
 	connHTTP.Transport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	s.clientHTTP = &integration.CalendarHTTPApi{ConnHTTP: &connHTTP, Host: "http://" + calendarHost + ":8888"}
-	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.clientGRPC = eventsv1.NewEventsHandlerClient(connGRPC)
 	s.notificationCh = make(chan *common.Notification, 100)
 	s.idsToDelete = make(map[int64]struct{})
+	s.wg.Add(1)
 	go s.serveNotifyHTTP()
 }
 
 func (s *CalendarSuite) SetupTest() {
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 }
 
 func (s *CalendarSuite) TearDownTest() {
@@ -72,10 +75,11 @@ func (s *CalendarSuite) TearDownTest() {
 		s.Require().NoError(err)
 		delete(s.idsToDelete, id)
 	}
+	s.cancel()
 }
 
 func (s *CalendarSuite) TearDownSuite() {
-	s.cancel()
+	s.wg.Wait()
 }
 
 func (s *CalendarSuite) TestAddAndListEventsGRPC() {
@@ -135,12 +139,11 @@ func (s *CalendarSuite) TestAddAndListEventsGRPC() {
 		s.idsToDelete[id] = struct{}{}
 	}
 	err = func() error {
-		started := time.Now()
+		timer := time.NewTimer(70 * time.Second)
 		ctx, cancel := context.WithCancel(context.Background())
 		go func() {
-			if time.Since(started).Seconds() > 120 {
-				cancel()
-			}
+			<-timer.C
+			cancel()
 		}()
 		for {
 			select {
@@ -214,12 +217,11 @@ func (s *CalendarSuite) TestAddAndListEventsHTTP() {
 		s.idsToDelete[id] = struct{}{}
 	}
 	err = func() error {
-		started := time.Now()
+		timer := time.NewTimer(70 * time.Second)
 		ctx, cancel := context.WithCancel(context.Background())
 		go func() {
-			if time.Since(started).Seconds() > 120 {
-				cancel()
-			}
+			<-timer.C
+			cancel()
 		}()
 		for {
 			select {
@@ -241,6 +243,7 @@ func TestCalendarSuite(t *testing.T) {
 }
 
 func (s *CalendarSuite) serveNotifyHTTP() {
+	defer s.wg.Done()
 	notifyHandler := func(w http.ResponseWriter, r *http.Request) {
 		n := common.Notification{}
 		err := json.NewDecoder(r.Body).Decode(&n)
@@ -250,6 +253,9 @@ func (s *CalendarSuite) serveNotifyHTTP() {
 		s.Require().NoError(err)
 	}
 	http.HandleFunc("/notify", notifyHandler)
-	err := http.ListenAndServe(":3002", nil)
-	s.Require().NoError(err)
+	go func() {
+		err := http.ListenAndServe(":3002", nil)
+		s.Require().NoError(err)
+	}()
+	<-s.ctx.Done()
 }

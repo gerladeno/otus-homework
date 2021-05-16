@@ -65,6 +65,7 @@ services:
       dockerfile: ./build/sender/Dockerfile
     container_name: calendar-sender
     environment:
+      NOTIFY_HOST: $DOCKER_GATEWAY_HOST
       RABBIT_DSN: amqp://guest:guest@calendar-rabbit:5672/
     networks:
       - calendar
