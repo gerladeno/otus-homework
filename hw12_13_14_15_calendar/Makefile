@@ -48,7 +48,7 @@ down:
 version: build_calendar
 	$(BIN) version
 
-test: generate
+test:
 	go test -race -count=50 ./internal/server/grpc ./internal/server/http ./internal/storage/memory ./internal/storage/sql
 
 integration-tests: up
