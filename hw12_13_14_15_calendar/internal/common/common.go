@@ -71,18 +71,6 @@ type Application interface {
 
 type TestApp struct{}
 
-func (t TestApp) ReadEvent(_ context.Context, id int64) (event *Event, err error) {
-	switch id {
-	case 0:
-		err = ErrNoSuchEvent
-	case 1:
-		err = io.ErrShortBuffer
-	default:
-		event = &Event{}
-	}
-	return event, err
-}
-
 func (t TestApp) CreateEvent(_ context.Context, event *Event) (int64, error) {
 	if event.ID == 0 {
 		return 1, nil

@@ -5,13 +5,13 @@
   },
   "storage": {
     "remote": true,
-    "host": "localhost",
+    "host": "127.0.0.1",
     "port": 5432,
     "database": "postgres",
     "ssl": "disable"
   },
   "http": {
-    "port": 3000
+    "port": 8888
   },
   "grpc": {
     "port": 3005,

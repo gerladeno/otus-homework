@@ -78,7 +78,7 @@ func (s *Server) Start(ctx context.Context) error {
 	go func() {
 		<-ctx.Done()
 		if err := s.Stop(); err != nil {
-			s.log.Warnf("failed to stop http server: \" + err.Error()")
+			s.log.Warnf("failed to stop http server: %s", err.Error())
 		}
 	}()
 	if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

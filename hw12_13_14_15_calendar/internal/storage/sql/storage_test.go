@@ -17,12 +17,14 @@ func TestStorage(t *testing.T) {
 	// goose -dir internal/storage/sql/migrations postgres "user=calendar password=calendar dbname=postgres sslmode=disable" up
 	t.Skip()
 	log := logrus.New()
-	events, err := New(context.Background(), log, "host=localhost port=5432 user=calendar password=calendar dbname=postgres sslmode=disable")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	events, err := New(ctx, log, "host=localhost port=5432 user=calendar password=calendar dbname=postgres sslmode=disable")
 	require.NoError(t, err)
 	tt, err := time.Parse(common.PgTimestampFmt, "2020-01-01 00:00:00")
 	require.NoError(t, err)
 
-	id, err := events.CreateEvent(context.Background(), &common.Event{
+	id, err := events.CreateEvent(ctx, &common.Event{
 		Title:       "First",
 		StartTime:   tt,
 		Duration:    0,
@@ -33,7 +35,7 @@ func TestStorage(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, id, int64(1))
 
-	id, err = events.CreateEvent(context.Background(), &common.Event{
+	id, err = events.CreateEvent(ctx, &common.Event{
 		Title:       "Second",
 		StartTime:   tt,
 		Duration:    0,
@@ -44,10 +46,10 @@ func TestStorage(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, id, int64(2))
 
-	test, _ := events.ListEventsByDay(context.Background(), tt)
+	test, _ := events.ListEventsByDay(ctx, tt)
 	require.Len(t, test, 2)
 
-	err = events.UpdateEvent(context.Background(), 1, &common.Event{
+	err = events.UpdateEvent(ctx, 1, &common.Event{
 		Title:       "First edited",
 		StartTime:   tt,
 		Duration:    5,
@@ -57,10 +59,10 @@ func TestStorage(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	err = events.DeleteEvent(context.Background(), 2)
+	err = events.DeleteEvent(ctx, 2)
 	require.NoError(t, err)
 
-	elems, err := events.ListEventsByDay(context.Background(), tt)
+	elems, err := events.ListEventsByDay(ctx, tt)
 	require.Len(t, elems, 1)
 	require.NoError(t, err)
 	require.Equal(t, elems[0].Title, "First edited")
@@ -71,24 +73,24 @@ func TestStorage(t *testing.T) {
 	require.Equal(t, elems[0].NotifyTime, int32(1000))
 	require.True(t, elems[0].Created.Before(elems[0].Updated))
 
-	id, err = events.CreateEvent(context.Background(), &common.Event{})
+	id, err = events.CreateEvent(ctx, &common.Event{})
 	require.NoError(t, err)
 	require.Equal(t, id, int64(3))
 
-	_, err = events.CreateEvent(context.Background(), &common.Event{StartTime: tt.AddDate(0, 0, 6)})
+	_, err = events.CreateEvent(ctx, &common.Event{StartTime: tt.AddDate(0, 0, 6)})
 	require.NoError(t, err)
-	_, err = events.CreateEvent(context.Background(), &common.Event{StartTime: tt.AddDate(0, 0, 20)})
+	_, err = events.CreateEvent(ctx, &common.Event{StartTime: tt.AddDate(0, 0, 20)})
 	require.NoError(t, err)
-	_, err = events.CreateEvent(context.Background(), &common.Event{StartTime: tt.AddDate(0, 0, 60)})
+	_, err = events.CreateEvent(ctx, &common.Event{StartTime: tt.AddDate(0, 0, 60)})
 	require.NoError(t, err)
 
-	test, err = events.ListEventsByDay(context.Background(), tt)
+	test, err = events.ListEventsByDay(ctx, tt)
 	require.NoError(t, err)
 	require.Len(t, test, 1)
-	test, err = events.ListEventsByWeek(context.Background(), tt)
+	test, err = events.ListEventsByWeek(ctx, tt)
 	require.NoError(t, err)
 	require.Len(t, test, 2)
-	test, err = events.ListEventsByMonth(context.Background(), tt)
+	test, err = events.ListEventsByMonth(ctx, tt)
 	require.NoError(t, err)
 	require.Len(t, test, 3)
 }

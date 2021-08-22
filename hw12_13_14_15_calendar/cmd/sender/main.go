@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"flag"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,7 +20,7 @@ import (
 var configFile string
 
 func init() {
-	flag.StringVar(&configFile, "config", "/etc/calendar/config.json", "Path to configuration file")
+	flag.StringVar(&configFile, "config", "/etc/calendar/sender_config.json", "Path to configuration file")
 }
 
 func main() {
@@ -25,6 +28,9 @@ func main() {
 	config := NewConfig(configFile)
 	log := logger.New(config.Logger.Level, config.Logger.Path)
 
+	if rabbitDsn := os.Getenv("RABBIT_DSN"); rabbitDsn != "" {
+		config.Rabbit.Dsn = rabbitDsn
+	}
 	rabbit, err := rmq.GetRMQConnectionAndDeclare(log, config.Rabbit.Dsn, config.Rabbit.TTL)
 	if err != nil {
 		log.Fatalf("failed to connect to rmq and declare topic: %s", err)
@@ -52,15 +58,42 @@ func main() {
 	}
 }
 
-func PrepareSender(log *logrus.Logger, conf SenderConfig) func([]byte) {
-	return func(body []byte) {
+func PrepareSender(log *logrus.Logger, conf SenderConfig) func(context.Context, []byte) {
+	return func(ctx context.Context, body []byte) {
 		n := common.Notification{}
 		if err := json.Unmarshal(body, &n); err != nil {
 			log.Warnf("failed to decode a message: %s", string(body))
 		}
-		if conf.SenderParam1 == "INFO" {
+		switch conf.SenderParam1 {
+		case "TEST":
 			log.Info("NOTIFICATION: ", n.String())
-		} else {
+			host := os.Getenv("NOTIFY_HOST")
+			if host == "" {
+				host = "http://172.17.0.1:3002"
+			} else {
+				host = "http://" + host + ":3002"
+			}
+			log.Warn("host: ", host)
+			c := &http.Client{Transport: http.DefaultTransport}
+			c.Transport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec
+			req, err := http.NewRequestWithContext(ctx, "POST", host+"/notify", bytes.NewReader(body))
+			if err != nil {
+				log.Warnf("err creating a notification POST request: %s", err)
+				return
+			}
+			r, err := c.Do(req)
+			if err != nil {
+				log.Warnf("err notifying: %s. err: %s", n.String(), err)
+				return
+			}
+			err = r.Body.Close()
+			if err != nil {
+				log.Warnf("err closing response body on a notification request: %s", err)
+				return
+			}
+		case "INFO":
+			log.Info("NOTIFICATION: ", n.String())
+		default:
 			log.Debug("NOTIFICATION: ", n.String())
 		}
 	}

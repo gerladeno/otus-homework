@@ -17,7 +17,7 @@ import (
 var configFile string
 
 func init() {
-	flag.StringVar(&configFile, "config", "/etc/calendar/config.json", "Path to configuration file")
+	flag.StringVar(&configFile, "config", "/etc/calendar/scheduler_config.json", "Path to configuration file")
 }
 
 func main() {
@@ -25,17 +25,22 @@ func main() {
 	config := NewConfig(configFile)
 	log := logger.New(config.Logger.Level, config.Logger.Path)
 
+	if rabbitDsn := os.Getenv("RABBIT_DSN"); rabbitDsn != "" {
+		config.Rabbit.Dsn = rabbitDsn
+	}
 	rabbit, err := rmq.GetRMQConnectionAndDeclare(log, config.Rabbit.Dsn, config.Rabbit.TTL)
 	if err != nil {
 		log.Fatalf("failed to connect to rmq and declare topic: %s", err)
 	}
-	scheduler := time.NewTicker(time.Duration(config.Scheduler.Period))
 	ctx, cancel := context.WithCancel(context.Background())
 
 	storage, err := cmd.GetStorage(ctx, log, config.Storage)
 	if err != nil {
 		log.Fatalf("failed to connect to database: %s", err)
 	}
+
+	scheduler := time.NewTicker(time.Duration(config.Scheduler.Period))
+	defer scheduler.Stop()
 
 	sigCh := make(chan os.Signal, 1)
 	go func() {

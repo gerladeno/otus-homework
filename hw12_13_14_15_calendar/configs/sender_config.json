@@ -1,12 +1,13 @@
 {
   "sender": {
-    "sender_param_1": "INFO"
+    "sender_param_1": "TEST"
   },
   "logger": {
     "level": "DEBUG",
     "path": "stdout"
   },
   "rabbit": {
+    "ttl": 31536000000,
     "dsn": "amqp://guest:guest@localhost:5672/"
   }
 }

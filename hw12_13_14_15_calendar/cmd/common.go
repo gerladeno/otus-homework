@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/app"
 	memorystorage "github.com/gerladeno/otus_homeworks/hw12_13_14_15_calendar/internal/storage/memory"
@@ -33,12 +34,15 @@ func GetStorage(ctx context.Context, log *logrus.Logger, conf StorageConf) (app.
 		storage app.Storage
 		err     error
 	)
+	if host := os.Getenv("PG_HOST"); host != "" {
+		conf.Host = host
+	}
 	if conf.Remote {
 		dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 			conf.Host,
 			conf.Port,
-			"calendar",
-			"calendar",
+			os.Getenv("PG_USER"),
+			os.Getenv("PG_PASSWORD"),
 			conf.Database,
 			conf.Ssl)
 		storage, err = sqlstorage.New(ctx, log, dsn)

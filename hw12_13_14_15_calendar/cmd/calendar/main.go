@@ -19,7 +19,7 @@ import (
 var configFile string
 
 func init() {
-	flag.StringVar(&configFile, "config", "/etc/calendar/config.json", "Path to configuration file")
+	flag.StringVar(&configFile, "config", "/etc/calendar/calendar_config.json", "Path to configuration file")
 }
 
 func main() {
@@ -34,16 +34,6 @@ func main() {
 	log := logger.New(config.Logger.Level, config.Logger.Path)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	storage, err := cmd.GetStorage(ctx, log, config.Storage)
-	if err != nil {
-		log.Fatalf("failed to connect to database: %s", err)
-	}
-
-	calendar := app.New(log, storage)
-	handler := internalhttp.NewEventHandler(calendar, log)
-	router := internalhttp.NewRouter(handler, log, version)
-	httpServer := internalhttp.NewServer(log, router, config.HTTP.Port)
-	grpcServer := internalgrpc.NewRPCServer(calendar, log, config.GRPC.Network, config.GRPC.Port)
 
 	go func() {
 		signals := make(chan os.Signal, 1)
@@ -58,6 +48,18 @@ func main() {
 		signal.Stop(signals)
 		cancel()
 	}()
+
+	storage, err := cmd.GetStorage(ctx, log, config.Storage)
+	if err != nil {
+		log.Fatalf("failed to connect to database: %s", err)
+	}
+
+	calendar := app.New(log, storage)
+	handler := internalhttp.NewEventHandler(calendar, log)
+	router := internalhttp.NewRouter(handler, log, version)
+	httpServer := internalhttp.NewServer(log, router, config.HTTP.Port)
+	grpcServer := internalgrpc.NewRPCServer(calendar, log, config.GRPC.Network, config.GRPC.Port)
+
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
